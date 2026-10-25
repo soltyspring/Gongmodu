@@ -24,7 +24,7 @@ export function createFeed(options: Options = {}) {
     if (!snapshotPath) return;
     try {
       const saved = JSON.parse(await readFile(snapshotPath, 'utf8'));
-      if (saved.version === 2 && Array.isArray(saved.data?.events) && saved.data.events.every((e: unknown) => isScheduleEvent(e) && e.disclosure && /^\d{14}$/.test(e.disclosure.receiptNo)) && Number.isFinite(Date.parse(saved.data.fetchedAt))) cache = saved.data;
+      if (saved.version === 3 && Array.isArray(saved.data?.events) && saved.data.events.every((e: unknown) => isScheduleEvent(e) && e.disclosure && /^\d{14}$/.test(e.disclosure.receiptNo)) && Number.isFinite(Date.parse(saved.data.fetchedAt))) cache = saved.data;
     } catch { /* Missing/corrupt snapshots never become fabricated data. */ }
   })();
   async function sync() {
@@ -37,7 +37,7 @@ export function createFeed(options: Options = {}) {
       pending = collect({ key: apiKey, fetcher: options.fetcher, now, lookbackDays: options.lookbackDays ?? Number(process.env.DART_LOOKBACK_DAYS || 180), delayMs: options.delayMs, progress: (done, total) => { progress = { done, total }; } }).then(async result => {
         if (snapshotPath) {
           await mkdir(dirname(snapshotPath), { recursive: true });
-          await writeFile(`${snapshotPath}.tmp`, JSON.stringify({ version: 2, data: result }), { mode: 0o600 });
+          await writeFile(`${snapshotPath}.tmp`, JSON.stringify({ version: 3, data: result }), { mode: 0o600 });
           await rename(`${snapshotPath}.tmp`, snapshotPath);
         }
         cache = result; return result;

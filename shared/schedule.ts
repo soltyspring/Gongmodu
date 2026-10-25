@@ -19,6 +19,7 @@ export interface DartDisclosure {
   filedOn: string; originalFiledOn: string; sourceUrl: string; priceLabel: string;
   subscriptionText: string; paymentText: string | null; allocationText: string | null; corrected: boolean;
   brokerSource?: 'summary' | 'document' | 'unconfirmed';
+  ipoEvidence?: { receiptNo: string; sourceUrl: string };
   refund?: DateEvidence | null; listing?: DateEvidence | null;
   terms?: OfferingTerms;
 }

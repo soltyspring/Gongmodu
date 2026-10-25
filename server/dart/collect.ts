@@ -1,5 +1,5 @@
 import { addDays, dateKey, type ScheduleResponse, type ScheduleEvent } from '../../shared/schedule.ts';
-import { createDartClient, DartError } from './client.ts';
+import { createDartClient, DartError, type DartDocument } from './client.ts';
 import { documentGroups, latestOfferings, normalizeOffering, originalDate, parseDartDates } from './normalize.ts';
 import { brokerKey, disclosedDates, fullOffering, offeringScope, offeringTerms, type DetailSource } from './details.ts';
 
@@ -11,8 +11,9 @@ export async function collectDartSchedule(options: { key: string; fetcher?: type
   const start = addDays(end, -(options.lookbackDays ?? 180));
   const client = createDartClient(options.key, options.fetcher, options.delayMs);
   const reports = await client.reports(start, end);
-  // Existing KOSPI/KOSDAQ rights offerings are not IPOs. Konex transfers still need document evidence.
-  const candidates = reports.filter(r => ['E', 'N'].includes(r.corp_cls) && /증권신고서\s*\(지분증권\)/.test(r.report_nm) && !/철/.test(r.rm) && !/철회/.test(r.report_nm));
+  // corp_cls describes the issuer now. A completed IPO can already be K/Y;
+  // verify the offering itself instead of dropping it because it has listed.
+  const candidates = reports.filter(r => /증권신고서\s*\(지분증권\)/.test(r.report_nm) && !/철/.test(r.rm) && !/철회/.test(r.report_nm));
   const companies = [...new Set(candidates.map(r => r.corp_code))];
   if (companies.length > 500) throw new DartError('DART_SCAN_LIMIT');
   const events: ScheduleEvent[] = [];
@@ -23,20 +24,44 @@ export async function collectDartSchedule(options: { key: string; fetcher?: type
     for (const report of candidates.filter(r => r.corp_code === corp)) {
       // Never match a company's old summary to a newer correction by company name alone.
       const exact = groups.some(g => g.title.replace(/\s/g, '') === '일반사항' && g.list.some(row => row.rcept_no === report.rcept_no));
-      const document = await client.document(report.rcept_no);
+      const securityRows = groups.filter(g => g.title.replace(/\s/g, '') === '증권의종류').flatMap(g => g.list).filter(row => row.rcept_no === report.rcept_no);
+      if (securityRows.some(row => /주주배정|제3자배정|주주우선/.test(row.slmthn || ''))) continue;
+      let document: DartDocument;
+      try { document = await client.document(report.rcept_no); }
+      catch (error) {
+        if (!(error instanceof DartError) || error.code !== 'DART_014') throw error;
+        omitted.document_unavailable = (omitted.document_unavailable || 0) + 1;
+        continue;
+      }
       const latestGroups = exact ? groups : documentGroups(report, document);
       if (!latestGroups.length) { omitted.summary_unmatched = (omitted.summary_unmatched || 0) + 1; continue; }
-      const result = normalizeOffering(report, latestGroups, document);
+      let result = normalizeOffering(report, latestGroups, document);
+      let verifiedBase: DetailSource | undefined;
+      const firstDate = originalDate(report, document.text);
+      if (result.reason === 'ipo_unconfirmed' && firstDate && !fullOffering(document)) {
+        const history = (await client.reports(firstDate, end, corp)).filter(r => r.corp_code === corp && r.rcept_no < report.rcept_no && /증권신고서\s*\(지분증권\)/.test(r.report_nm) && !/철회/.test(r.report_nm)).sort((a,b) => b.rcept_no.localeCompare(a.rcept_no));
+        for (const previous of history.slice(0,6)) {
+          let older: DartDocument;
+          try { older = await client.document(previous.rcept_no); }
+          catch(error) { if(error instanceof DartError && error.code === 'DART_014')continue;throw error; }
+          if (originalDate(previous, older.text) !== firstDate || !fullOffering(older)) continue;
+          verifiedBase = {document: older, receiptNo: previous.rcept_no};
+          result = normalizeOffering(report, latestGroups, document, {...verifiedBase, originalFiledOn: firstDate});
+          break;
+        }
+      }
       for(const event of result.events) {
         const disclosure=event.disclosure!;
         const latestSource:DetailSource={document,receiptNo:report.rcept_no};
-        let baseSource=latestSource;
+        let baseSource=verifiedBase ?? latestSource;
         // Some final-price filings contain only changed sections. Find the latest full
         // statement in the SAME original-filing lineage, rather than treating it as absent.
-        if(!fullOffering(document)) {
+        if(!verifiedBase && !fullOffering(document)) {
           const history=(await client.reports(disclosure.originalFiledOn,end,corp)).filter(r=>r.corp_code===corp && r.rcept_no<report.rcept_no && /증권신고서\s*\(지분증권\)/.test(r.report_nm) && !/철회/.test(r.report_nm)).sort((a,b)=>b.rcept_no.localeCompare(a.rcept_no));
           for(const previous of history.slice(0,6)) {
-            const older=await client.document(previous.rcept_no);
+            let older: DartDocument;
+            try { older=await client.document(previous.rcept_no); }
+            catch (error) { if(error instanceof DartError && error.code==='DART_014')continue;throw error; }
             if(originalDate(previous,older.text)===disclosure.originalFiledOn && fullOffering(older)) {baseSource={document:older,receiptNo:previous.rcept_no};break;}
           }
         }

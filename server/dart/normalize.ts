@@ -13,6 +13,18 @@ export function parseDartDates(value: string): { start: string; last: string } |
   if (!matches.length || matches.length > 2) return null;
   const dates = matches.map(m => date(m[1] || m[4], m[2] || m[5], m[3] || m[6]));
   if (dates.some(d => !d)) return null;
+  // DART also prints explicit ranges as 2026.10.22(목)~10.23(금).
+  // Carry the written year only for a complete, unambiguous month/day suffix.
+  if (dates.length === 1) {
+    const first = matches[0];
+    const suffix = value.slice(first.index! + first[0].length);
+    const abbreviated = suffix.match(/^\s*(?:\([월화수목금토일]\))?\s*[~～∼]\s*(\d{1,2})\s*(?:[.\/-]|월)\s*(\d{1,2})(?:\s*일)?(?:\s*\([월화수목금토일]\))?\s*$/);
+    if (abbreviated) {
+      const last = date(dates[0]!.slice(0, 4), abbreviated[1], abbreviated[2]);
+      if (!last) return null;
+      dates.push(last);
+    }
+  }
   const start = dates[0]!, last = dates.at(-1)!;
   if (last < start || Date.parse(last) - Date.parse(start) > 14 * 86400000) return null;
   // A dangling range means a missing end date, not a single-day subscription.
@@ -23,7 +35,7 @@ const clean = (s: string | undefined) => s && !/^(?:-|해당사항\s*없음|미�
 const unique = (values: (string | null)[]) => [...new Set(values.filter((v): v is string => !!v))];
 const rows = (groups: DartGroup[], title: string, receipt: string) => groups.filter(g => g.title.replace(/\s/g, '') === title).flatMap(g => g.list).filter(row => row.rcept_no === receipt);
 const compact = (s: string) => s.replace(/\s/g, '');
-const underwriterRole = /^(?:대표|공동|대표주관|공동주관|대표주관회사|공동주관회사|인수회사|주관회사|인수단)$/;
+const underwriterRole = /^(?:대표|공동|대표주관|공동주관|대표주관회사|공동주관회사|인수|인수회사|주관회사|인수단)$/;
 const brokerName = (value: string | undefined) => {
   const name = clean(value);
   return name && name.length <= 80 && /[가-힣A-Za-z]/.test(name) && !/^(?:구분|명칭|인수인|인수인명|합계|계)$/.test(compact(name)) ? name : null;
@@ -76,11 +88,12 @@ export function documentGroups(report: DartReport, document: DartDocument): Dart
 }
 export function originalDate(report: DartReport, text: string) {
   if (!/정정|발행조건확정|첨부추가/.test(report.report_nm)) return date(report.rcept_dt.slice(0,4), report.rcept_dt.slice(4,6), report.rcept_dt.slice(6,8));
-  const near = text.match(/(?:정정대상\s*공시서류의\s*)?최초\s*제출일\s*[:：]?([\s\S]{0,90})/)?.[1];
+  // Read the one date immediately after the label, not later dates in the history table.
+  const near = text.match(/최초\s*제출일\s*[:：]?\s*((?:20\d{2})\s*(?:[.\/-]|년)\s*\d{1,2}\s*(?:[.\/-]|월)\s*\d{1,2}(?:\s*일)?|20\d{6})/)?.[1];
   return near ? parseDartDates(near)?.start ?? null : null;
 }
 export type Normalization = { events: ScheduleEvent[]; reason?: string };
-export function normalizeOffering(report: DartReport, groups: DartGroup[], document: DartDocument | string): Normalization {
+export function normalizeOffering(report: DartReport, groups: DartGroup[], document: DartDocument | string, ipoSource?: { document: DartDocument; receiptNo: string; originalFiledOn: string }): Normalization {
   const text = typeof document === 'string' ? document : document.text;
   if (/철/.test(report.rm) || /철회/.test(report.report_nm)) return { events: [], reason: 'withdrawn' };
   if (/정/.test(report.rm)) return { events: [], reason: 'superseded' };
@@ -88,9 +101,10 @@ export function normalizeOffering(report: DartReport, groups: DartGroup[], docum
   if (general.length !== 1 || general[0].corp_code !== report.corp_code) return { events: [], reason: 'summary_unmatched' };
   const securities = rows(groups, '증권의종류', report.rcept_no);
   if (securities.some(r => /주주배정|제3자배정|주주우선/.test(r.slmthn || ''))) return { events: [], reason: 'not_ipo' };
-  if (!ipoEvidence(text)) return { events: [], reason: 'ipo_unconfirmed' };
-  const range = parseDartDates(general[0].sbd || '');
   const firstDate = originalDate(report, text);
+  const inheritedIpo = !ipoEvidence(text) && ipoSource && firstDate === ipoSource.originalFiledOn && ipoEvidence(ipoSource.document.text);
+  if (!ipoEvidence(text) && !inheritedIpo) return { events: [], reason: 'ipo_unconfirmed' };
+  const range = parseDartDates(general[0].sbd || '');
   if (!range) return { events: [], reason: 'date_unconfirmed' };
   if (!firstDate) return { events: [], reason: 'lineage_unconfirmed' };
   const id = `dart:${report.corp_code}:${firstDate}`;
@@ -107,6 +121,7 @@ export function normalizeOffering(report: DartReport, groups: DartGroup[], docum
     filedOn: filingDate, originalFiledOn: firstDate, sourceUrl, priceLabel: '모집(매출)가액',
     subscriptionText: general[0].sbd, paymentText: clean(general[0].pymd), allocationText: clean(general[0].asand),
     corrected: /정정|발행조건확정/.test(report.report_nm), brokerSource,
+    ...(inheritedIpo ? { ipoEvidence: { receiptNo: ipoSource!.receiptNo, sourceUrl: `https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${ipoSource!.receiptNo}` } } : {}),
   };
   const end = addDays(range.last, 1);
   return { events: [{ id: `${id}:subscription`, title: `(청약) ${report.corp_name}`, company: report.corp_name, kind: 'subscription',

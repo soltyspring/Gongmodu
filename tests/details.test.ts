@@ -44,7 +44,7 @@ test('변경부분만 있는 최종 공시는 동일 최초제출일의 전문�
   const latest={corp_code:'12345678',corp_name:'테스트기업',corp_cls:'E',rcept_no:receiptNo,rcept_dt:'20261022',report_nm:'[발행조건확정]증권신고서(지분증권)',rm:''};
   const original={...latest,rcept_no:'20260917000123',rcept_dt:'20260917',report_nm:'증권신고서(지분증권)'};
   const headings='I. 모집 또는 매출에 관한 일반사항\n코스닥시장 상장공모';
-  const latestText=`최초 제출일: 2026년 09월 17일\n${headings}`;
+  const latestText=`최초 제출일: 2026년 09월 17일\n발행조건 확정: 모집가액 2000원`;
   const fullText=`${headings}\n배정결과의 통지\n초과 청약증거금은 2026년 10월 29일에 환불합니다.`;
   const groups=(r:string)=>[{title:'일반사항',list:[{rcept_no:r,corp_code:'12345678',sbd:'2026.10.26~2026.10.27',pymd:'2026.10.29'}]},{title:'증권의종류',list:[{rcept_no:r,corp_code:'12345678',slmthn:'일반공모',slprc:'2000'}]}];
   const fetcher:typeof fetch=async input=>{

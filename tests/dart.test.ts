@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { zipSync, strToU8 } from 'fflate';
 import { createDartClient, dateWindows, documentData, DartError, readGroups, type DartReport, type DartGroup } from '../server/dart/client.ts';
-import { documentGroups, documentUnderwriters, ipoEvidence, latestOfferings, normalizeOffering, parseDartDates } from '../server/dart/normalize.ts';
+import { documentGroups, documentUnderwriters, ipoEvidence, latestOfferings, normalizeOffering, originalDate, parseDartDates } from '../server/dart/normalize.ts';
 import { createFeed } from '../server/feed.ts';
 import { collectDartSchedule, DART_SOURCE } from '../server/dart/collect.ts';
 import { exportCalendar, type ScheduleResponse } from '../shared/schedule.ts';
@@ -55,7 +55,7 @@ test('대표·공동 표기와 다단 인수인 표를 읽고 최신 표의 증�
   const headers = ['인수인','증권의 종류','인수수량','인수금액','인수방법'];
   const document = { text, tables: [
     [headers,['대표','이전증권','보통주','100','1000','총액인수']],
-    [headers,['대표','SK증권','보통주','100','1000','총액인수'],['공동','한화투자증권','보통주','100','1000','총액인수']],
+    [headers,['대표','SK증권','보통주','100','1000','총액인수'],['인수','한화투자증권','보통주','100','1000','총액인수']],
     [['참고 증권사','인수수량'],['대표','무관증권','100']],
   ] };
   assert.deepEqual(documentUnderwriters(report,document).map(r=>r.actnmn),['SK증권','한화투자증권']);
@@ -125,4 +125,48 @@ test('인증키 미설정/형식 오류는 명시적 오류이며 이전 Google 
     const feed=createFeed({key:()=>value,snapshotPath:null,collect:async()=>{throw new Error('must not fetch');}});
     await assert.rejects(feed(),new RegExp(value?'DART_KEY_INVALID':'DART_KEY_MISSING'));
   }
+});
+
+
+test('공시의 줄여 쓴 청약 종료일과 최초 제출일 뒤 정정 이력을 섞지 않음',()=>{
+  assert.deepEqual(parseDartDates('2026.10.22(목)~10.23(금)'),{start:'2026-10-22',last:'2026-10-23'});
+  for(const bad of ['2026.10.22~미정','2026.10.22~10.32','2026.12.31~01.01','2026.10.22~10.23 / 10.24'])assert.equal(parseDartDates(bad),null);
+  const longHistory='최초제출일 :\n\n2026년 9월 21일'+'\n'.repeat(40)+'제출일자 문서명 2026년 09월 21일 최초 제출 2026년 10월 16일 정정';
+  assert.equal(originalDate(report,longHistory),'2026-09-21');
+});
+
+test('이미 상장한 K/Y 회사의 IPO도 수집하고 주주배정 증자는 원문 요청 전에 제외',async()=>{
+  for(const corp_cls of ['K','Y']){
+    let documentCalls=0;
+    const listed={...report,corp_cls};
+    const fetcher:typeof fetch=async input=>{
+      const u=new URL(String(input));
+      if(u.pathname.endsWith('list.json'))return Response.json({status:'000',total_page:1,list:[listed]});
+      if(u.pathname.endsWith('estkRs.json'))return Response.json({status:'000',group:groups()});
+      documentCalls++;return new Response(zipSync({'s.xml':strToU8(`<DOCUMENT><P>${text}</P></DOCUMENT>`)}));
+    };
+    const result=await collectDartSchedule({key,fetcher,delayMs:0,now:()=>Date.parse('2026-10-25T03:00:00Z'),lookbackDays:20});
+    assert.equal(result.events.length,1);assert.equal(documentCalls,1);
+  }
+  let docs=0;
+  const rights=groups();rights[1].list[0].slmthn='주주배정후 실권주 일반공모';
+  const fetcher:typeof fetch=async input=>{
+    const u=new URL(String(input));
+    if(u.pathname.endsWith('list.json'))return Response.json({status:'000',total_page:1,list:[{...report,corp_cls:'K'}]});
+    if(u.pathname.endsWith('estkRs.json'))return Response.json({status:'000',group:rights});
+    docs++;throw new Error('Rights offering must not request an IPO document.');
+  };
+  const result=await collectDartSchedule({key,fetcher,delayMs:0,now:()=>Date.parse('2026-10-25T03:00:00Z'),lookbackDays:20});
+  assert.equal(result.events.length,0);assert.equal(docs,0);
+});
+
+test('원문 파일 없음 오류는 해당 공시만 제외하고 수집 범위를 기록',async()=>{
+  const fetcher:typeof fetch=async input=>{
+    const u=new URL(String(input));
+    if(u.pathname.endsWith('list.json'))return Response.json({status:'000',total_page:1,list:[report]});
+    if(u.pathname.endsWith('estkRs.json'))return Response.json({status:'000',group:groups()});
+    return new Response('<result><status>014</status></result>');
+  };
+  const result=await collectDartSchedule({key,fetcher,delayMs:0,now:()=>Date.parse('2026-10-25T03:00:00Z'),lookbackDays:20});
+  assert.equal(result.events.length,0);assert.equal(result.coverage?.reasons.document_unavailable,1);
 });
