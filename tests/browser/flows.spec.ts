@@ -21,7 +21,7 @@ test('홈 캘린더 → 상세 → 저장 → 새로고침 → 관심 일정', a
   await setup(page);
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('공모주 캘린더');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('공모주 일정');
   await page.getByRole('button', { name: '청약 일정 자세히 보기' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('heading', { name: '한빛테크', exact: true })).toBeVisible();
@@ -125,7 +125,7 @@ test('보류한 경쟁률 화면과 수집 요청은 출시 앱에 노출하지 
   const requests: string[] = [];
   page.on('request', request => { if (request.url().includes('/api/competition')) requests.push(request.url()); });
   await page.goto('/#competition');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('공모주 캘린더');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('공모주 일정');
   await expect(page.getByRole('link', { name: '청약 비교', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: '청약 일정 자세히 보기' }).click();
   await expect(page.locator('.competition-snippet')).toHaveCount(0);
@@ -146,15 +146,17 @@ test('DART 원문 환불 근거와 출처를 상세에서 확인하고 내보내
 });
 
 
-test('홈에서 달력이 첫 화면에 보이고 날짜 선택으로 해당 일정을 확인', async ({ page }) => {
+test('홈은 가까운 청약을 먼저 보여주고 바로 다음 달력에서 일정을 확인', async ({ page }) => {
   await setup(page); await page.unroute('**/api/schedule');
   await page.route('**/api/schedule', route => route.fulfill({json:{...data,coverage:{from:'2026-04-28',to:'2026-10-25',reviewedReports:31,omittedReports:3,reasons:{summary_unmatched:3}}}}));
   await page.goto('/');
   const calendar=page.getByRole('region',{name:'홈 공모주 캘린더'});
   await expect(calendar).toBeVisible();
   const box=await calendar.locator('.calendar-grid').boundingBox();
-  expect(box!.y).toBeLessThan(240);
-  expect(box!.y+box!.height).toBeLessThan(page.viewportSize()!.height-90);
+  const featured=await page.locator('.featured-panel').boundingBox();
+  expect(featured!.y+featured!.height).toBeLessThan(page.viewportSize()!.height*0.6);
+  if(page.viewportSize()!.width<600) expect(featured!.y).toBeLessThan(box!.y);
+  expect(box!.y).toBeLessThan(page.viewportSize()!.height-100);
   await expect(page.getByText(/일부 공시를 자동으로 해석/)).toHaveCount(0);
   await calendar.getByRole('button',{name:'2026-10-26, 일정 2개',exact:true}).click();
   await expect(calendar.locator('.home-day-list .event-row')).toHaveCount(2);

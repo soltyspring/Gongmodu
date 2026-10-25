@@ -171,23 +171,22 @@ export default function App() {
     <header className="mobile-header"><a className="brand" href="#home"><Mark small /><span>공모두</span></a><button className="icon-button" aria-label="공모두 이용 안내" onClick={() => go(`${view}/guide/1`)}><Info size={21} /></button></header>
     <main className={`main-content view-${view}`}>
       <div className="page-topline"><span>{Number(today.slice(5, 7))}월 {Number(today.slice(8))}일 {weekdays[new Date(`${today}T12:00:00Z`).getUTCDay()]}요일</span><button className="refresh-button" onClick={() => void refresh()} disabled={loading} aria-label="일정 새로고침"><RefreshCw size={14} className={loading ? 'spinning' : ''} />{loading ? '연결 중' : data ? `${new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(data.fetchedAt))} 확인` : '새로고침'}</button></div>
-      <div className="page-title"><div><h1>{view === 'home' ? '공모주 캘린더' : view === 'calendar' ? '공모주 전체 일정' : '내가 모아둔 관심 일정'}</h1><p>{view === 'home' ? '청약부터 환불까지, 날짜로 확인해요.' : view === 'calendar' ? '날짜를 누르면 그날의 일정을 볼 수 있어요.' : '중요한 날짜를 저장하고 다시 확인해요.'}</p></div>{view === 'calendar' && <button className="secondary-button today-button" onClick={() => selectDate(today)}>오늘</button>}</div>
+      <div className="page-title"><div><h1>{view === 'home' ? '공모주 일정' : view === 'calendar' ? '공모주 전체 일정' : '내가 모아둔 관심 일정'}</h1><p>{view === 'home' ? '청약부터 환불까지, 날짜로 확인해요.' : view === 'calendar' ? '날짜를 누르면 그날의 일정을 볼 수 있어요.' : '중요한 날짜를 저장하고 다시 확인해요.'}</p></div>{view === 'calendar' && <button className="secondary-button today-button" onClick={() => selectDate(today)}>오늘</button>}</div>
       {(error || data?.stale) && <div className="notice" role="alert"><Info size={18} /><span>{error || 'DART에 잠시 연결할 수 없어 마지막으로 받은 일정을 보여드려요.'}{data && ` 마지막 확인: ${new Date(data.fetchedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`}</span><button onClick={() => void refresh()} disabled={loading}>다시 시도</button></div>}
       {!!data?.events.filter(event => !event.broker && event.end > today).length && <div className="notice" role="status"><Info size={18} /><span>주관사 확인이 필요한 일정이 {data.events.filter(event => !event.broker && event.end > today).length}개 있어요. 해당 일정의 상세에서 공시 원문을 확인해 주세요.</span></div>}
       {(loading || errorCode === 'DART_SYNCING') && !data ? <div className="loading-grid" aria-busy="true" aria-label="공모주 일정을 불러오고 있어요"><div className="skeleton main-skeleton" /><div className="skeleton calendar-skeleton" /><p>DART 공시에서 청약 일정을 확인하고 있어요</p></div> : !data && error ? <Empty title="공시 데이터에 다시 연결해 주세요" text="연결 후 공모주 일정을 확인할 수 있어요." action={<Button onClick={() => void refresh()}>다시 불러오기</Button>} /> : <>
-      {view === 'home' && <div className="home-layout calendar-first">
+      {view === 'home' && <div className="home-layout subscription-first">
+          <section className="featured-panel panel"><div className="section-heading"><h2>가장 가까운 청약</h2>{featured && <span className="status-badge">{statusLabel(featured, today)}</span>}</div>{featured ? <>
+            <button className="featured-company" onClick={() => open(featured)}>{featured.company}<ChevronRight size={20} /></button><p className="featured-broker">{featured.broker || '주관사 원문 확인'}</p>
+            <p className="featured-date-compact"><CalendarDays size={17} /><strong>{dateRange(featured)}</strong></p>
+            <Button size="medium" display="full" onClick={() => open(featured)}>청약 일정 자세히 보기</Button>
+          </> : <Empty title="새로운 청약을 기다리고 있어요" text="이전 기록은 전체 일정에서 확인해 보세요." />}</section>
         <section className="panel calendar-panel home-calendar" aria-label="홈 공모주 캘린더">
           <Calendar month={month} selected={selected} events={events} today={today} onSelect={selectDate} onMonth={moveMonth} overview />
           <div className="home-day-heading"><h3>{shortDate(selected)} 일정</h3><button className="text-button" onClick={() => { setCalendarMode('month'); go('calendar'); }}>전체 일정 <ChevronRight size={16} /></button></div>
           <div className="home-day-list">{events.filter(e => includesDate(e, selected)).length ? events.filter(e => includesDate(e, selected)).map(e => row(e, false)) : <p className="home-day-empty">이날은 등록된 일정이 없어요.</p>}</div>
         </section>
-        <div className="home-primary">
-          <section className="featured-panel panel"><div className="section-heading"><h2>가장 가까운 청약</h2>{featured && <span className="status-badge">{statusLabel(featured, today)}</span>}</div>{featured ? <>
-            <button className="featured-company" onClick={() => open(featured)}>{featured.company}<ChevronRight size={20} /></button><p className="featured-broker">{featured.broker || '주관사 원문 확인'} · {dateRange(featured)}</p>
-            <Button size="medium" display="full" onClick={() => open(featured)}>청약 일정 자세히 보기</Button>
-          </> : <Empty title="새로운 청약을 기다리고 있어요" text="이전 기록은 전체 일정에서 확인해 보세요." />}</section>
           <section className="upcoming-section"><div className="section-heading"><h2>다가오는 일정 <span className="heading-count">{upcoming.length}</span></h2><button className="text-button" onClick={() => { setCalendarMode('list'); go('calendar'); }}>전체 보기 <ChevronRight size={16} /></button></div><div className="panel event-list">{upcoming.length ? upcoming.slice(0, 4).map(e => row(e)) : <Empty title="예정된 일정이 아직 없어요" text="전체 일정에서 이전 기록을 확인할 수 있어요." />}</div></section>
-        </div>
       </div>}
       {view === 'calendar' && <>
         <div className="calendar-toolbar"><label className="search-field"><Search size={19} /><input aria-label="종목명 또는 증권사 검색" placeholder="종목명, 증권사로 검색해 보세요" value={query} onChange={e => setQuery(e.target.value)} />{query && <button aria-label="검색어 지우기" onClick={() => setQuery('')}><X size={16} /></button>}</label><div className="segmented" aria-label="일정 보기 방식"><button className={calendarMode === 'month' ? 'selected' : ''} aria-pressed={calendarMode === 'month'} onClick={() => setCalendarMode('month')}>달력</button><button className={calendarMode === 'list' ? 'selected' : ''} aria-pressed={calendarMode === 'list'} onClick={() => setCalendarMode('list')}>목록</button></div></div>

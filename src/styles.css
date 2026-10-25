@@ -71,16 +71,16 @@ strong { font-weight: 650; }
 .page-title { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 16px 0 30px; }
 .page-title p { margin-top: 8px; font-size: 15px; color: var(--muted); }
 .mobile-break { display: none; }
-/* The month is the main action: first in DOM and in the mobile reading order. */
+/* Lead with the next subscription; the calendar follows before the long event list. */
 .view-home .page-title { margin: 6px 0 16px; }
 .view-home .page-title h1 { font-size: 24px; line-height: 1.3; }
 .view-home .page-title p { display: none; }
-.calendar-first .home-calendar { padding: 16px 16px 12px; }
-.calendar-first .featured-panel { padding: 20px; }
-.calendar-first .featured-company { margin-top: 14px; font-size: 21px; }
-.calendar-first .featured-broker { margin-bottom: 16px; }
-.calendar-first .featured-panel .section-heading { min-height: 24px; }
-.calendar-first .event-open { min-height: 76px; padding: 16px 0; }
+.subscription-first .home-calendar { padding: 16px 16px 12px; }
+.subscription-first .featured-panel { padding: 20px; }
+.subscription-first .featured-company { margin-top: 14px; font-size: 21px; }
+.subscription-first .featured-broker { margin-bottom: 16px; }
+.subscription-first .featured-panel .section-heading { min-height: 24px; }
+.subscription-first .event-open { min-height: 76px; padding: 16px 0; }
 .overview .calendar-heading { margin: 0 2px 8px; }
 .overview .calendar-weekdays { margin-bottom: 6px; }
 .overview .calendar-day { min-height: 66px; padding: 5px 0 3px; gap: 3px; }
@@ -331,8 +331,8 @@ dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
   .view-home .page-title h1 { font-size: 22px; }
   .main-content.view-home { padding-top: 8px; }
   .view-home .page-topline,.view-home .refresh-button { min-height: 28px; }
-  .calendar-first .home-calendar { margin: 0 -4px; padding: 12px 8px 8px; }
-  .calendar-first .home-day-heading,.calendar-first .home-day-list { padding-left: 8px; padding-right: 8px; }
+  .subscription-first .home-calendar { margin: 0 -4px; padding: 12px 8px 8px; }
+  .subscription-first .home-day-heading,.subscription-first .home-day-list { padding-left: 8px; padding-right: 8px; }
   .mobile-break { display: initial; }
   .home-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .home-primary,.home-secondary { gap: 24px; }
@@ -464,3 +464,15 @@ dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
 @media(max-width:800px) { .comparison-picker > div { grid-template-columns:repeat(2,minmax(0,1fr)); } .scenario-form { grid-template-columns:repeat(2,minmax(0,1fr)); } .scenario-results { grid-template-columns:1fr; } }
 @media(max-width:600px) { .competition-toolbar { align-items:flex-start; } .competition-toolbar strong { font-size:16px; } .competition-toolbar p { font-size:13px; } .competition-toolbar .refresh-button { flex:none; font-size:12px; } .comparison-picker > div { grid-template-columns:1fr; } .comparison-table { min-width:calc(128px + var(--comparison-cols) * 190px); } .comparison-label-col { width:128px; } .comparison-table th:first-child { width:128px; padding:14px 12px; } .comparison-table td { padding:14px 12px; } .scenario-panel { padding:20px; } .scenario-panel > p { font-size:13px; } .scenario-panel .quiet-label { width:100%; } .scenario-form { gap:18px 12px; } .scenario-form label { font-size:12px; } }
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation: none !important; scroll-behavior: auto !important; } }
+
+.subscription-first { grid-template-areas: "featured calendar" "upcoming calendar"; }
+.subscription-first .featured-panel { grid-area: featured; }
+.subscription-first .home-calendar { grid-area: calendar; }
+.subscription-first .upcoming-section { grid-area: upcoming; }
+.subscription-first .featured-broker { margin-bottom: 8px; }
+.featured-date-compact { display:flex; align-items:center; gap:8px; color:var(--text); margin-bottom:18px; }
+.featured-date-compact svg { color:var(--muted); }
+.featured-date-compact strong { font-size:20px; font-variant-numeric:tabular-nums; }
+@media (max-width:600px) {
+  .home-layout.subscription-first { grid-template-areas:"featured" "calendar" "upcoming"; gap:20px; }
+}
