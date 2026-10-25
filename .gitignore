@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.ait
+.env
+.env.local
+.cache/
+.research/
+test-results/
+playwright-report/
+.taste-skill/screenshots/
+.taste-skill/inspection*
+*.log
+
+.env.*
+!.env.example
+.taste-skill/
