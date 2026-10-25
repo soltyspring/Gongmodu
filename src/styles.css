@@ -71,6 +71,29 @@ strong { font-weight: 650; }
 .page-title { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 16px 0 30px; }
 .page-title p { margin-top: 8px; font-size: 15px; color: var(--muted); }
 .mobile-break { display: none; }
+/* The month is the main action: first in DOM and in the mobile reading order. */
+.view-home .page-title { margin: 6px 0 16px; }
+.view-home .page-title h1 { font-size: 24px; line-height: 1.3; }
+.view-home .page-title p { display: none; }
+.calendar-first .home-calendar { padding: 16px 16px 12px; }
+.calendar-first .featured-panel { padding: 20px; }
+.calendar-first .featured-company { margin-top: 14px; font-size: 21px; }
+.calendar-first .featured-broker { margin-bottom: 16px; }
+.calendar-first .featured-panel .section-heading { min-height: 24px; }
+.calendar-first .event-open { min-height: 76px; padding: 16px 0; }
+.overview .calendar-heading { margin: 0 2px 8px; }
+.overview .calendar-weekdays { margin-bottom: 6px; }
+.overview .calendar-day { min-height: 66px; padding: 5px 0 3px; gap: 3px; }
+.overview .day-number { width: 24px; height: 24px; font-size: 12px; }
+.overview .day-events { gap: 2px; }
+.overview .calendar-event,.overview .event-spacer { height: 16px; line-height: 16px; font-size: 11px; }
+.overview .more-events { font-size: 11px; line-height: 14px; }
+.overview .calendar-legend { padding: 10px 0; }
+.home-day-heading { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--rule); padding-top: 12px; }
+.home-day-heading h3 { font-size: 14px; }
+.home-day-heading .text-button { font-size: 12px; min-height: 36px; }
+.home-day-empty { color: var(--muted); font-size: 13px; padding: 8px 0 12px; }
+.saved-layout { grid-template-columns: minmax(0, 1fr); }
 .home-layout { display: grid; grid-template-columns: minmax(0, 1.38fr) minmax(0, 1fr); gap: var(--gap); align-items: start; }
 .home-primary,.home-secondary { display: grid; gap: var(--gap); min-width: 0; }
 .panel { background: var(--surface); border-radius: var(--radius-card); }
@@ -214,7 +237,7 @@ strong { font-weight: 650; }
 .schedule-layout.list-mode { grid-template-columns: minmax(0, 1fr); max-width: 850px; }
 .month-list-caption { margin: -4px 0 10px; font-size: 12px; color: var(--muted); }
 .saved-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-.saved-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 24px; align-items: start; }
+.saved-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
 .export-panel { padding: 28px; }
 .export-panel > svg { color: var(--accent); margin-bottom: 18px; }
 .export-panel h2 { font-size: 19px; }
@@ -304,6 +327,12 @@ dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
   .refresh-button { font-size: 11px; }
   .page-title { margin: 17px 0 24px; align-items: flex-start; }
   .page-title p { font-size: 13px; margin-top: 8px; }
+  .view-home .page-title { margin: 2px 0 12px; }
+  .view-home .page-title h1 { font-size: 22px; }
+  .main-content.view-home { padding-top: 8px; }
+  .view-home .page-topline,.view-home .refresh-button { min-height: 28px; }
+  .calendar-first .home-calendar { margin: 0 -4px; padding: 12px 8px 8px; }
+  .calendar-first .home-day-heading,.calendar-first .home-day-list { padding-left: 8px; padding-right: 8px; }
   .mobile-break { display: initial; }
   .home-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .home-primary,.home-secondary { gap: 24px; }

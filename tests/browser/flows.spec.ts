@@ -1,6 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
 import { parseSchedule } from '../helpers/ics';
-import { readFile } from 'node:fs/promises';
 
 // Synthetic fixtures are confined to automated tests; production always reads the live feed.
 const body = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\n' + [
@@ -18,11 +17,11 @@ async function setup(page: Page) {
   await page.route('**/api/competition', route => route.fulfill({ json: {rows:[],fetchedAt:data.fetchedAt,refreshAfterSeconds:300} }));
 }
 
-test('홈 → 상세 → 저장 → 새로고침 → 관심 일정 → ICS 파일', async ({ page }) => {
+test('홈 캘린더 → 상세 → 저장 → 새로고침 → 관심 일정', async ({ page }) => {
   await setup(page);
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('다가오는 공모주, 한눈에 확인해요');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('공모주 캘린더');
   await page.getByRole('button', { name: '청약 일정 자세히 보기' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('heading', { name: '한빛테크', exact: true })).toBeVisible();
@@ -33,14 +32,7 @@ test('홈 → 상세 → 저장 → 새로고침 → 관심 일정 → ICS 파�
   await page.reload();
   await page.getByRole('link', { name: '관심 일정', exact: true }).filter({ visible: true }).click();
   await expect(page.getByRole('button', { name: '한빛테크 청약 관심 해제' })).toBeVisible();
-  const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: '일정 1개 내보내기' }).click();
-  const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe('gongmodu.ics');
-  const path = await download.path();
-  const output = await readFile(path!, 'utf8');
-  expect(output).toContain('DTEND;VALUE=DATE:20261028');
-  expect(output).toContain('SUMMARY:(청약) 한빛테크');
+  await expect(page.getByRole('button', { name: /내보내기/ })).toHaveCount(0);
   await page.getByRole('button', { name: '한빛테크 청약 관심 해제' }).click();
   await expect(page.getByText('기억해 둘 공모주를 모아보세요')).toBeVisible();
   expect(errors).toEqual([]);
@@ -119,7 +111,7 @@ test('원문으로 보완한 증권사명은 홈·검색·상세와 확인 근�
   const enriched = { ...events[0], broker: '아이엠증권', disclosure: { ...events[0].disclosure, brokerSource: 'document' } };
   await page.route('**/api/schedule', route => route.fulfill({ json: { ...data, events: [enriched] } }));
   await page.goto('/');
-  await expect(page.locator('.featured-broker')).toHaveText('아이엠증권');
+  await expect(page.locator('.featured-broker')).toContainText('아이엠증권');
   await page.getByRole('link', { name: '전체 일정', exact: true }).filter({ visible: true }).click();
   await page.getByRole('button', { name: '목록', exact: true }).click();
   await page.getByRole('textbox', { name: '종목명 또는 증권사 검색' }).fill('아이엠');
@@ -133,14 +125,14 @@ test('보류한 경쟁률 화면과 수집 요청은 출시 앱에 노출하지 
   const requests: string[] = [];
   page.on('request', request => { if (request.url().includes('/api/competition')) requests.push(request.url()); });
   await page.goto('/#competition');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('다가오는 공모주, 한눈에 확인해요');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('공모주 캘린더');
   await expect(page.getByRole('link', { name: '청약 비교', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: '청약 일정 자세히 보기' }).click();
   await expect(page.locator('.competition-snippet')).toHaveCount(0);
   expect(requests).toEqual([]);
 });
 
-test('DART 원문 환불 근거와 출처를 상세에서 확인하고 달력 파일로 내보냄',async({page})=>{
+test('DART 원문 환불 근거와 출처를 상세에서 확인하고 내보내기는 제공하지 않음',async({page})=>{
   await setup(page); await page.unroute('**/api/schedule');
   const evidence={date:'2026-10-29',quote:'초과 청약증거금은 2026년 10월 29일에 환불합니다.',basis:'explicit',receiptNo:'20261008000123',sourceUrl:'https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20261008000123'};
   const disclosure={...events[0].disclosure,refund:evidence};
@@ -150,6 +142,22 @@ test('DART 원문 환불 근거와 출처를 상세에서 확인하고 달력 �
   const dialog=page.getByRole('dialog');
   await expect(dialog).toContainText(evidence.quote);
   await expect(dialog.getByRole('link',{name:/근거 공시/})).toHaveAttribute('href',evidence.sourceUrl);
-  const download=page.waitForEvent('download');await dialog.getByRole('button',{name:'캘린더 파일 내보내기'}).click();
-  const file=await download;const body=await readFile((await file.path())!,'utf8');expect(body).toContain('DTEND;VALUE=DATE:20261030');
+  await expect(dialog.getByRole('button', { name: /내보내기/ })).toHaveCount(0);
+});
+
+
+test('홈에서 달력이 첫 화면에 보이고 날짜 선택으로 해당 일정을 확인', async ({ page }) => {
+  await setup(page); await page.unroute('**/api/schedule');
+  await page.route('**/api/schedule', route => route.fulfill({json:{...data,coverage:{from:'2026-04-28',to:'2026-10-25',reviewedReports:31,omittedReports:3,reasons:{summary_unmatched:3}}}}));
+  await page.goto('/');
+  const calendar=page.getByRole('region',{name:'홈 공모주 캘린더'});
+  await expect(calendar).toBeVisible();
+  const box=await calendar.locator('.calendar-grid').boundingBox();
+  expect(box!.y).toBeLessThan(240);
+  expect(box!.y+box!.height).toBeLessThan(page.viewportSize()!.height-90);
+  await expect(page.getByText(/일부 공시를 자동으로 해석/)).toHaveCount(0);
+  await calendar.getByRole('button',{name:'2026-10-26, 일정 2개',exact:true}).click();
+  await expect(calendar.locator('.home-day-list .event-row')).toHaveCount(2);
+  await expect(calendar.locator('.home-day-list')).toContainText('한빛테크');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });

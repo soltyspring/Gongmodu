@@ -1,4 +1,4 @@
-import { Device, Environment, File as TossFile, SafeArea, Screen, graniteEvent } from '@apps-in-toss/web-framework';
+import { Device, Environment, SafeArea, Screen, graniteEvent } from '@apps-in-toss/web-framework';
 
 export function isNativeToss() {
   try { return /^\d+\.\d+/.test(Environment.tossAppVersion); } catch { return false; }
@@ -17,13 +17,6 @@ export function connectNative(onBack: () => void) {
   return () => { unsubscribeInsets(); unsubscribeBack(); unsubscribeHome(); };
 }
 export const closeNative = () => Screen.close();
-export async function saveNativeCalendar(contents: string) {
-  if (!TossFile.saveBase64.isSupported()) throw new Error('Unsupported app version');
-  const bytes = new TextEncoder().encode(contents);
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  await TossFile.saveBase64({ data: btoa(binary), fileName: 'gongmodu.ics', mimeType: 'text/calendar' });
-}
 export async function openExternal(url: string) {
   if (!/^https:\/\//.test(url)) return;
   if (isNativeToss()) await Device.openURL(url);
