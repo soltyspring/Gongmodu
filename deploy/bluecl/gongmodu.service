@@ -1,0 +1,17 @@
+[Unit]
+Description=Gongmodu DART schedule API
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/solty/dev/gongmodu/current
+Environment=NODE_ENV=production
+EnvironmentFile=/home/solty/dev/gongmodu/.env
+ExecStart=/home/solty/dev/gongmodu/node/bin/node node_modules/tsx/dist/cli.mjs server/index.ts
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+UMask=0077
+
+[Install]
+WantedBy=default.target
