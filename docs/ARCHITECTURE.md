@@ -1,6 +1,6 @@
 # 시스템 구조와 데이터 규칙
 
-현재 데이터 수집은 DART 증권신고서 기반이에요. 초기 Google Calendar 수집은 제거했고, ICS는 사용자가 일정을 내보내는 파일 형식으로만 사용해요.
+현재 데이터 수집은 DART 증권신고서 기반이에요. 초기 Google Calendar 수집은 제거했고, ICS 유틸리티는 과거 테스트 이력으로만 남아 있어요.
 
 ## 데이터 흐름
 
@@ -11,7 +11,9 @@ OpenDART 공시 목록 → 지분증권 주요정보 → 최종 공시 원문 �
 - server/dart/collect.ts: 최근 접수 공시를 조회해 후보를 수집하고 확인 가능한 일정만 반환해요.
 - server/dart/details.ts: 모집 본문 구간의 환불일·상장 예정일 근거와 증권사별 청약 조건을 확인해요. 변경 부분만 담긴 최종 공시는 같은 최초 제출일의 가장 최근 전문을 찾아 연결해요.
 - server/competition.ts (출시에서 분리한 보류 코드): iM증권·삼성증권·대신증권 공개 조회 데이터의 수집·종목 및 기간 일치·5분 캐시·지연/종료/미지원/stale 상태를 담당해요.
-- server/feed.ts: 단일 수집 작업, 1시간 캐시, 원자적 파일 저장, 재시작 복구와 stale 상태를 담당해요.
+- server/feed.ts: 명시적인 수집 명령에서만 DART를 호출하고 검증한 결과를 원자적으로 저장해요.
+- server/snapshot.ts: API는 인증키 없이 저장 파일만 읽어요. 파일 교체를 다음 요청에서 반영하며 읽기 실패 시 메모리의 마지막 정상 결과를 유지해요.
+- deploy/bluecl/gongmodu-sync.timer: 한국 시간 0·6·12·18시에 별도 수집 프로세스를 실행해요.
 - shared/schedule.ts: 날짜·달력·기간 차선·공시 메타데이터의 공통 규칙이에요.
 - src/App.tsx: 홈·달력·관심과 상세/안내 라우트, 검색·필터·출처 안내를 담당해요.
 - src/Competition.tsx, shared/competition.ts (출시 앱에서 import하지 않는 보류 코드): 청약 비교 화면·가정 계산과 증권사 날짜의 달력 보완을 담당해요.
@@ -19,9 +21,9 @@ OpenDART 공시 목록 → 지분증권 주요정보 → 최종 공시 원문 �
 
 ## API
 
-GET /api/schedule은 events, fetchedAt, stale, source, coverage를 반환해요. fetchedAt은 마지막 정상 수집 시각이며 개별 공시의 제출 시각과는 달라요. 초기 수집은 비동기로 수행해요. 수집 중에는 503 DART_SYNCING과 Retry-After를 반환하고 화면이 다시 확인해요. 최초 수집 실패 시 가짜 데이터나 이전 Google 데이터로 채우지 않아요. 기존 DART 스냅샷이 있으면 원래 수집 시각과 함께 stale로 제공해요.
+GET /api/schedule은 events, fetchedAt, stale, source, coverage를 반환해요. fetchedAt은 실제 마지막 정상 수집 시각이에요. 앱 조회와 새로고침은 수집을 시작하지 않아요. 유효한 저장 파일이 없으면 503 SCHEDULE_UNAVAILABLE을 반환하며 가짜 데이터를 만들지 않아요. 기존 앱의 upstream 오류 배너와 호환하기 위해 배치 결과는 stale=false로 반환하고 실제 수집 날짜와 시각을 유지해요. 데이터 나이를 실시간으로 속이지 않아요.
 
-GET /api/status는 설정 여부·수집 진행·마지막 확인·오류 코드만 반환해요. 인증키와 인증키를 포함한 URL은 응답하지 않아요. API는 토스 서비스/QR 테스트 origin과 로컬 개발 origin을 허용해요. 운영에서는 호스팅 계층의 요청 제한·모니터링을 추가해야 해요.
+GET /api/status는 저장 결과 유무·마지막 수집 시각·6시간 수집 주기·일정 수를 반환해요. 수집 오류와 작업 결과는 우분투 journal에서 확인해요. API 프로세스는 DART 키가 없는 api.env를 사용하고, 수집 프로세스만 private .env를 읽어요. 스냅샷은 릴리스 밖 data 디렉터리에 보관해 배포 후에도 유지해요.
 
 `/api/competition`은 이번 출시 서버에 등록하지 않아요. 경쟁률 수집·비교·가정 계산 코드는 향후 재개를 위해 보존하지만 사용자 요청이나 자동 갱신으로 실행되지 않아요.
 

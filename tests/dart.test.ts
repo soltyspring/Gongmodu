@@ -1,4 +1,8 @@
 import { test } from 'node:test';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createSnapshotReader, publishSnapshot } from '../server/snapshot.ts';
 import assert from 'node:assert/strict';
 import { zipSync, strToU8 } from 'fflate';
 import { createDartClient, dateWindows, documentData, DartError, readGroups, type DartReport, type DartGroup } from '../server/dart/client.ts';
@@ -113,17 +117,30 @@ test('주관사 미확인 일정은 추정 없이 품질 점검 목록에 접수
   assert.equal(result.quality?.missingBrokerCount,1);
   assert.deepEqual(result.quality?.brokerReview,[{eventId:result.events[0].id,company:report.corp_name,receiptNo:report.rcept_no,sourceUrl:result.events[0].disclosure!.sourceUrl}]);
 });
-test('단일 수집 작업 공유, 실패 시 마지막 정상 DART 데이터·확인 시각 유지', async () => {
-  let calls=0,fail=false,clock=Date.parse('2026-10-25T03:00:00Z');
-  const feed=createFeed({key:()=>key,snapshotPath:null,now:()=>clock,ttlMs:1000,collect:async()=>{calls++; if(fail) throw new DartError('DART_020'); return response();}});
-  const [a,b]=await Promise.all([feed.sync(),feed.sync()]); assert.equal(calls,1);assert.deepEqual(a,b);
-  clock+=61000;fail=true; await assert.rejects(feed.sync());
-  const stale=await feed();assert.equal(stale.stale,true);assert.equal(stale.fetchedAt,a.fetchedAt);assert.deepEqual(stale.events,a.events);
+test('명시적 수집만 실행하고 실패 후 정상 스냅샷과 실제 확인 시각을 유지', async () => {
+  const directory=await mkdtemp(join(tmpdir(),'gongmodu-'));
+  try {
+    const path=join(directory,'snapshot.json');
+    let calls=0,fail=false;
+    const feed=createFeed({key:()=>key,snapshotPath:path,collect:async()=>{calls++; if(fail) throw new DartError('DART_020'); return response();}});
+    const [a,b]=await Promise.all([feed.sync(),feed.sync()]); assert.equal(calls,1);assert.deepEqual(a,b);
+    const reader=createSnapshotReader(path);
+    await Promise.all(Array.from({length:20},()=>reader())); assert.equal(calls,1);
+    const originalFile=await readFile(path,'utf8');
+    fail=true;await assert.rejects(feed.sync());
+    assert.equal(await readFile(path,'utf8'),originalFile);
+    assert.deepEqual(await reader(),a); assert.equal(calls,2);
+    const next={...a,fetchedAt:'2026-10-26T03:00:00Z'};
+    await publishSnapshot(path,next); assert.equal((await reader()).fetchedAt,next.fetchedAt);
+    await writeFile(path,'{"version":3'); assert.deepEqual(await reader(),next);
+    await assert.rejects(createSnapshotReader(path)(),/SCHEDULE_UNAVAILABLE/);
+  } finally { await rm(directory,{recursive:true,force:true}); }
 });
+
 test('인증키 미설정/형식 오류는 명시적 오류이며 이전 Google 피드로 대체하지 않음', async () => {
   for (const value of [undefined,'bad']) {
     const feed=createFeed({key:()=>value,snapshotPath:null,collect:async()=>{throw new Error('must not fetch');}});
-    await assert.rejects(feed(),new RegExp(value?'DART_KEY_INVALID':'DART_KEY_MISSING'));
+    await assert.rejects(feed.sync(),new RegExp(value?'DART_KEY_INVALID':'DART_KEY_MISSING'));
   }
 });
 

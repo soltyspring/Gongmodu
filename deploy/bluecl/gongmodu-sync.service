@@ -1,0 +1,14 @@
+[Unit]
+Description=Collect Gongmodu DART schedule snapshot
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/solty/dev/gongmodu/current
+Environment=NODE_ENV=production
+EnvironmentFile=/home/solty/dev/gongmodu/.env
+Environment=DART_SNAPSHOT_PATH=/home/solty/dev/gongmodu/data/dart-schedule.json
+ExecStart=/usr/bin/flock -n /home/solty/dev/gongmodu/data/sync.lock /home/solty/dev/gongmodu/node/bin/node node_modules/tsx/dist/cli.mjs scripts/sync-dart.ts
+TimeoutStartSec=30min
+NoNewPrivileges=true
+UMask=0077

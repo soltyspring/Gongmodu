@@ -6,7 +6,7 @@ After=network-online.target
 Type=simple
 WorkingDirectory=/home/solty/dev/gongmodu/current
 Environment=NODE_ENV=production
-EnvironmentFile=/home/solty/dev/gongmodu/.env
+EnvironmentFile=/home/solty/dev/gongmodu/api.env
 ExecStart=/home/solty/dev/gongmodu/node/bin/node node_modules/tsx/dist/cli.mjs server/index.ts
 Restart=on-failure
 RestartSec=10

@@ -10,7 +10,21 @@
 - 서버 전용 환경: `/home/solty/dev/gongmodu/.env`, 소유자만 읽기
 - 서비스: `systemctl --user status gongmodu.service`
 
-Node 24 설치 및 `npm ci --omit=dev --ignore-scripts` 후 서비스를 시작합니다. 첫 수집은 `/api/schedule` 요청으로 시작하며 `.cache/dart-schedule.json`에 저장됩니다.
+Node 24 설치 및 `npm ci --omit=dev --ignore-scripts` 후 서비스를 시작합니다. API는 키가 없는 `api.env`에서 HOST·PORT·ALLOWED_ORIGINS·DART_SNAPSHOT_PATH만 읽습니다. 수집기만 기존 `.env`의 인증키를 읽습니다.
+
+스냅샷은 `/home/solty/dev/gongmodu/data/dart-schedule.json`에 보관합니다. data 디렉터리는 700, 데이터와 환경 파일은 600으로 유지합니다. API 요청은 수집을 실행하지 않습니다.
+
+`gongmodu-sync.service`와 `gongmodu-sync.timer`를 `~/.config/systemd/user/`에 설치한 뒤 `systemctl --user daemon-reload`, `systemctl --user enable --now gongmodu-sync.timer`로 활성화합니다. 한국 시간 0·6·12·18시에 수집하며 Persistent=true로 놓친 실행을 부팅 후 한 번 보충합니다. 동일 service와 flock으로 중복 실행을 방지합니다. 수집 실패 시 기존 데이터는 유지되고 다음 정기 실행을 기다립니다. 최초 설치 검증 시 한 번만 `systemctl --user start gongmodu-sync.service`를 실행할 수 있습니다.
+
+운영 확인:
+
+```sh
+systemctl --user list-timers gongmodu-sync.timer
+systemctl --user status gongmodu.service gongmodu-sync.service
+journalctl --user -u gongmodu-sync.service -n 30 --no-pager
+```
+
+로그아웃 후에도 실행하려면 사용자의 Linger=yes가 필요합니다. 현재 solty 계정은 활성화되어 있습니다.
 
 ## HTTPS 최초 연결 — 운영자가 한 번 실행
 
@@ -30,7 +44,7 @@ curl -f https://bluecl.cloud/gongmodu/api/status
 curl -f -H 'Origin: https://gongmodu.apps.tossmini.com' https://bluecl.cloud/gongmodu/api/schedule
 ```
 
-첫 수집 중에는 `503 DART_SYNCING`을 반환할 수 있습니다. 수집 완료 후 `events`, `fetchedAt`, `source` 및 CORS 응답을 확인합니다. HTTPS 연결 전의 내부 프로세스 실행만으로 배포 완료라고 표시하지 않습니다.
+저장 데이터가 전혀 없을 때만 `503 SCHEDULE_UNAVAILABLE`을 반환합니다. 정상 저장 파일이 있으면 수집 중에도 200을 반환합니다. 응답의 `events`, `fetchedAt`, `source` 및 CORS 응답을 확인합니다. HTTPS 연결 전의 내부 프로세스 실행만으로 배포 완료라고 표시하지 않습니다.
 
 ## 후속 업데이트·복구
 

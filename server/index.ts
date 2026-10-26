@@ -1,10 +1,9 @@
 import express from 'express';
-import { createFeed } from './feed.ts';
-import { DartError } from './dart/client.ts';
+import { createSnapshotReader } from './snapshot.ts';
 
 const app = express();
 app.disable('x-powered-by');
-const allowed = new Set((process.env.ALLOWED_ORIGINS || 'https://gongmodu.apps.tossmini.com,https://gongmodu.private-apps.tossmini.com').split(',').map(s => s.trim()));
+const allowed = new Set((process.env.ALLOWED_ORIGINS || 'https://gongmodu.apps.tossmini.com,https://gongmodu.private-apps.tossmini.com,https://gongmodu.web.tossmini.com,https://gongmodu.private-web.tossmini.com').split(',').map(s => s.trim()));
 app.use('/api', (req, res, next) => {
   const origin = req.headers.origin;
   if (origin) {
@@ -16,21 +15,18 @@ app.use('/api', (req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
-const getFeed = createFeed();
+const getFeed = createSnapshotReader();
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
-app.get('/api/status', (_req, res) => res.json(getFeed.status()));
+app.get('/api/status', async (_req, res) => res.json(await getFeed.status()));
 // Competition adapters are retained for research, but are not exposed in this release.
 app.get('/api/schedule', async (_req, res) => {
   try {
     const result = await getFeed();
     res.setHeader('Cache-Control', 'no-store');
     res.json(result);
-  } catch (error) {
-    const code = error instanceof DartError ? error.code : 'DART_SYNC_FAILED';
-    const preparing = ['DART_SYNCING', 'DART_KEY_MISSING', 'DART_KEY_INVALID'].includes(code);
+  } catch {
     res.setHeader('Cache-Control', 'no-store');
-    if (code === 'DART_SYNCING') res.setHeader('Retry-After', '5');
-    res.status(preparing ? 503 : 502).json({ code, error: code === 'DART_SYNCING' ? 'DART 공시에서 청약 일정을 확인하고 있어요. 잠시만 기다려 주세요.' : 'DART 공시 데이터에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.' });
+    res.status(503).json({ code: 'SCHEDULE_UNAVAILABLE', error: '일정을 준비하고 있어요. 잠시 후 다시 확인해 주세요.' });
   }
 });
 app.use(express.static('dist'));

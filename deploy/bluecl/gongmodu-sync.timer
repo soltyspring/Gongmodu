@@ -1,0 +1,11 @@
+[Unit]
+Description=Collect Gongmodu schedules every six hours (KST)
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:00:00 Asia/Seoul
+Persistent=true
+AccuracySec=1min
+Unit=gongmodu-sync.service
+
+[Install]
+WantedBy=timers.target
