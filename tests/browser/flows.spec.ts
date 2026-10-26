@@ -61,7 +61,14 @@ test('월간 달력, exclusive 종료, 검색, 종류 필터, 스팩 제외, 월
 });
 
 test('직접 상세 진입, Escape 닫기, 브라우저 뒤로 가기, 안내', async ({ page }) => {
-  await setup(page); await page.goto('/#calendar/event/a');
+  await setup(page);
+  let release!: () => void;
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/schedule', async route => { await pending; await route.fulfill({ json: data }); });
+  await page.goto('/#calendar/event/a');
+  await expect(page.getByRole('dialog').getByRole('status')).toHaveText('저장된 일정을 불러오고 있어요');
+  await expect(page.getByText('이 일정을 찾을 수 없어요')).toHaveCount(0);
+  release();
   await expect(page.getByRole('dialog')).toContainText('한빛테크');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -74,12 +81,12 @@ test('직접 상세 진입, Escape 닫기, 브라우저 뒤로 가기, 안내', 
   await expect(page.getByRole('dialog')).toContainText('자동 푸시 알림을 보내지 않아요');
 });
 
-test('원본 장애, 다시 시도, 빈 피드, stale 상태를 명확하게 표시', async ({ page }) => {
+test('조회 장애는 재시도하고 오래된 정상 데이터는 경고 없이 유지', async ({ page }) => {
   await setup(page);
   await page.unroute('**/api/schedule');
   await page.route('**/api/schedule', route => route.fulfill({ status: 502, json: { error: 'offline' } }));
   await page.goto('/');
-  await expect(page.getByRole('alert')).toContainText('공시 데이터를 불러오지 못했어요');
+  await expect(page.getByRole('alert')).toContainText('일정을 불러오지 못했어요');
   await page.unroute('**/api/schedule');
   await page.route('**/api/schedule', route => route.fulfill({ json: { ...data, events: [] } }));
   await page.getByRole('button', { name: '다시 불러오기', exact: true }).click();
@@ -87,7 +94,9 @@ test('원본 장애, 다시 시도, 빈 피드, stale 상태를 명확하게 표
   await page.unroute('**/api/schedule');
   await page.route('**/api/schedule', route => route.fulfill({ json: { ...data, stale: true } }));
   await page.getByRole('button', { name: '일정 새로고침' }).click();
-  await expect(page.getByRole('alert')).toContainText('마지막으로 받은 일정');
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.locator('.featured-company')).toContainText('한빛테크');
+  await expect(page.getByRole('button', {name:'일정 새로고침'})).toContainText('10. 25.');
 });
 
 test('주관사 미확인은 누락 안내와 원문 확인 동선을 표시', async ({ page }) => {
@@ -101,6 +110,7 @@ test('주관사 미확인은 누락 안내와 원문 확인 동선을 표시', a
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('주관사를 자동으로 확인하지 못했어요');
   await expect(dialog).toContainText('공시 원문 확인 필요');
+  await dialog.getByText('공시와 날짜 확인 근거', { exact: true }).click();
   await dialog.getByText('원본 공시 정보 보기', { exact: true }).click();
   await expect(dialog.getByRole('link', { name: 'DART 증권신고서 원문 열기' })).toHaveAttribute('href', incomplete.disclosure.sourceUrl);
 });
@@ -140,6 +150,7 @@ test('DART 원문 환불 근거와 출처를 상세에서 확인하고 내보내
   await page.route('**/api/schedule',route=>route.fulfill({json:{...data,events:[{...events[0],disclosure},refund]}}));
   await page.goto('/#calendar/event/refund-verified');
   const dialog=page.getByRole('dialog');
+  await dialog.getByText('공시와 날짜 확인 근거', {exact:true}).click();
   await expect(dialog).toContainText(evidence.quote);
   await expect(dialog.getByRole('link',{name:/근거 공시/})).toHaveAttribute('href',evidence.sourceUrl);
   await expect(dialog.getByRole('button', { name: /내보내기/ })).toHaveCount(0);
@@ -162,4 +173,23 @@ test('홈은 가까운 청약을 먼저 보여주고 바로 다음 달력에서 
   await expect(calendar.locator('.home-day-list .event-row')).toHaveCount(2);
   await expect(calendar.locator('.home-day-list')).toContainText('한빛테크');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('화면을 열어 두거나 조회가 실패해도 자동 재수집 요청을 반복하지 않음', async ({ page }) => {
+  await setup(page); await page.unroute('**/api/schedule');
+  let calls=0;
+  await page.route('**/api/schedule', route => { calls++; return route.fulfill({json:data}); });
+  await page.goto('/'); await expect(page.locator('.featured-company')).toContainText('한빛테크');
+  const initial=calls;
+  await page.clock.fastForward(6*60*60*1000);
+  expect(calls).toBe(initial);
+  await page.unroute('**/api/schedule');
+  await page.route('**/api/schedule', route => { calls++; return route.fulfill({status:503,json:{code:'DART_SYNCING'}}); });
+  await page.getByRole('button',{name:'일정 새로고침'}).click();
+  await expect(page.getByRole('button',{name:'일정 새로고침'})).toBeEnabled();
+  const afterManual=calls;
+  await page.clock.fastForward(60000);
+  expect(calls).toBe(afterManual);
+  await expect(page.locator('.featured-company')).toContainText('한빛테크');
+  await expect(page.getByRole('alert')).toHaveCount(0);
 });

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode, type ComponentProps } from 'react';
-import { Button as TDSButton } from '@toss/tds-mobile';
+import { Button as TDSButton, ListRow } from '@toss/tds-mobile';
 import { Bookmark, CalendarDays, Check, ChevronLeft, ChevronRight, CircleHelp, ExternalLink, Home, Info, RefreshCw, Search, X } from 'lucide-react';
 import { assignLanes, calendarCells, changeMonth, dateKey, dateRange, includesDate, isScheduleEvent, kindLabels, lastDay, shortDate, statusLabel, type EventKind, type ScheduleEvent, type ScheduleResponse } from '../shared/schedule';
 import { closeNative, connectNative, isNativeToss, openExternal } from './platform';
@@ -23,7 +23,7 @@ const guides = [
   ] },
   { title: '일정은 어디에서 가져오나요?', eyebrow: '데이터 안내', intro: '금융감독원 DART의 증권신고서를 확인해요.', steps: [
     ['DART 증권신고서를 읽어와요', '공시 검색과 지분증권 주요정보에서 청약기일·인수인·모집가액을 가져와요. 주관사 정보가 빠지면 같은 접수번호의 원문 인수인 표에서 보완해요. IPO 여부는 신고서 원문에서 추가 확인해요.'],
-    ['정정 공시를 함께 확인해요', '최근 180일 접수 공시를 기본으로 조회하고, 공시 접수번호가 일치하는 정보만 사용해요. 서버는 수집 결과를 1시간 보관해요. 확인 시간은 마지막 수집 시각이에요.'],
+    ['정정 공시를 함께 확인해요', '최근 180일 접수 공시를 기본으로 조회하고, 공시 접수번호가 일치하는 정보만 사용해요. 서버에서 매일 0시·6시·12시·18시에 공시를 수집해요. 앱은 마지막으로 수집을 마친 일정을 보여줘요. 확인 시간은 실제 수집 시각이에요.'],
     ['환불일과 상장 예정일도 원문으로 확인해요', '원문에 날짜가 명시되거나 환불이 납입기일이라고 명시된 경우만 표시해요. 최종 공시가 변경 부분만 담으면 같은 공모의 이전 전문을 함께 확인하며 근거 공시를 연결해요. 상장 예정일은 변경될 수 있어요.'],
   ] },
   { title: '관심 일정은 어떻게 보관하나요?', eyebrow: '관심 일정 안내', intro: '지금 사용하는 기기에 관심 일정을 저장해요.', steps: [
@@ -91,7 +91,6 @@ export default function App() {
   const [data, setData] = useState<ScheduleResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [errorCode, setErrorCode] = useState('');
   const [saved, setSaved] = useState<Saved>(readSaved);
   const [toast, setToast] = useState('');
   const [month, setMonth] = useState(today.slice(0, 7));
@@ -103,13 +102,11 @@ export default function App() {
   const [savedFilter, setSavedFilter] = useState<'upcoming' | 'all'>('upcoming');
 
   async function refresh() {
-    setLoading(true); setError(''); setErrorCode('');
+    setLoading(true); setError('');
     try {
       const response = await fetch(`${(import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')}/api/schedule`, { signal: AbortSignal.timeout(16000) });
       if (!response.ok) {
-        const failure = await response.json().catch(() => ({}));
-        setErrorCode(typeof failure.code === 'string' ? failure.code : '');
-        setError(failure.code === 'DART_SYNCING' ? 'DART 공시에서 청약 일정을 확인하고 있어요. 잠시만 기다려 주세요.' : 'DART 공시 데이터를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
+        setError('일정을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
         return;
       }
       const body: ScheduleResponse = await response.json();
@@ -119,7 +116,6 @@ export default function App() {
     finally { setLoading(false); }
   }
   useEffect(() => { void refresh(); const timer = setInterval(() => setToday(dateKey()), 60000); return () => clearInterval(timer); }, []);
-  useEffect(() => { if (errorCode !== 'DART_SYNCING') return; const timer = setTimeout(() => { void refresh(); }, 5000); return () => clearTimeout(timer); }, [errorCode, loading]);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(''), 3500); return () => clearTimeout(timer); }, [toast]);
   useEffect(() => { window.scrollTo(0, 0); }, [view]);
   const events = data?.events ?? [];
@@ -128,7 +124,7 @@ export default function App() {
   try { eventId = route[1] === 'event' ? decodeURIComponent(route.slice(2).join('/')) : undefined; } catch { eventId = undefined; }
   const active = events.find(e => e.id === eventId) ?? savedEvents.find(e => e.id === eventId);
   const activeDateEvidence=active?.kind==='refund'?active.disclosure?.refund:active?.kind==='listing'?active.disclosure?.listing:null;
-  const upcoming = events.filter(e => e.end > today);
+  const upcoming = events.filter(e => e.end > today).sort((a, b) => a.start.localeCompare(b.start) || a.company.localeCompare(b.company, 'ko'));
   const nextSubscriptions = upcoming.filter(e => e.kind === 'subscription');
   const featured = nextSubscriptions[0];
   const related = active ? events.filter(e => active.disclosure ? e.disclosure?.offeringId === active.disclosure.offeringId : !e.disclosure && e.company === active.company) : [];
@@ -157,7 +153,7 @@ export default function App() {
     catch { setToast('기기 저장 공간을 확인한 뒤 다시 시도해 주세요'); }
   }
   const row = (event: ScheduleEvent, date = true) => <div className="event-row" key={event.id}>
-    <button className="event-open" onClick={() => open(event)}><span className={`event-symbol ${event.kind}`} aria-hidden="true">{kindLabels[event.kind].slice(0, 1)}</span><span className="event-copy"><span className="event-company">{event.company}</span><span className="event-meta">{kindLabels[event.kind]}{event.broker ? ` · ${event.broker}` : ' · 주관사 원본 확인'}{date ? ` · ${dateRange(event)}` : ''}{!event.disclosure ? ' · 이전 출처' : ''}</span></span><span className={`event-status ${includesDate(event, today) ? 'in-progress' : ''}`}>{statusLabel(event, today)}</span><ChevronRight className="row-chevron" size={18} /></button>
+    <button className="event-open" onClick={() => open(event)}><span className={`event-symbol ${event.kind}`} aria-hidden="true">{kindLabels[event.kind].slice(0, 1)}</span><span className="event-copy"><span className="event-company">{event.company}</span><span className="event-meta">{kindLabels[event.kind]}{event.broker ? ` · ${event.broker}` : ' · 주관사 원본 확인'}{!event.disclosure ? ' · 이전 출처' : ''}</span>{date && <span className="event-date">{dateRange(event)}</span>}</span><span className={`event-status ${includesDate(event, today) ? 'in-progress' : ''}`}>{statusLabel(event, today)}</span><ChevronRight className="row-chevron" size={18} /></button>
     <button className={`save-button ${saved[event.id] ? 'is-saved' : ''}`} aria-label={`${event.company} ${kindLabels[event.kind]} 관심 ${saved[event.id] ? '해제' : '저장'}`} aria-pressed={!!saved[event.id]} onClick={() => toggleSave(event)}><Bookmark size={20} fill={saved[event.id] ? 'currentColor' : 'none'} /></button>
   </div>;
 
@@ -170,15 +166,15 @@ export default function App() {
     <aside className="sidebar"><a className="brand" href="#home"><Mark /><span>공모두</span></a><p className="brand-caption">공시로 확인하는 청약 일정</p><nav aria-label="주요 메뉴">{tabs.map(({ id, label, icon: Icon }) => <a href={`#${id}`} className={`nav-link ${view === id ? 'active' : ''}`} aria-current={view === id ? 'page' : undefined} key={id}><Icon size={20} /><span>{label}</span></a>)}</nav><div className="sidebar-bottom"><button className="help-link" onClick={() => go(`${view}/guide/0`)}><CircleHelp size={18} />공모주가 처음인가요?</button><div className="sidebar-note"><span className="source-dot" />DART 공시와 연결해요<p>일정은 주관사 공지로<br />한 번 더 확인해 주세요.</p></div><span className="sidebar-version">공모두 · 앱인토스 미니앱</span></div></aside>
     <header className="mobile-header"><a className="brand" href="#home"><Mark small /><span>공모두</span></a><button className="icon-button" aria-label="공모두 이용 안내" onClick={() => go(`${view}/guide/1`)}><Info size={21} /></button></header>
     <main className={`main-content view-${view}`}>
-      <div className="page-topline"><span>{Number(today.slice(5, 7))}월 {Number(today.slice(8))}일 {weekdays[new Date(`${today}T12:00:00Z`).getUTCDay()]}요일</span><button className="refresh-button" onClick={() => void refresh()} disabled={loading} aria-label="일정 새로고침"><RefreshCw size={14} className={loading ? 'spinning' : ''} />{loading ? '연결 중' : data ? `${new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(data.fetchedAt))} 확인` : '새로고침'}</button></div>
+      <div className="page-topline"><span>{Number(today.slice(5, 7))}월 {Number(today.slice(8))}일 {weekdays[new Date(`${today}T12:00:00Z`).getUTCDay()]}요일</span><button className="refresh-button" onClick={() => void refresh()} disabled={loading} aria-label="일정 새로고침"><RefreshCw size={14} className={loading ? 'spinning' : ''} />{loading ? '불러오는 중' : data ? `${new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(data.fetchedAt))} 확인` : '새로고침'}</button></div>
       <div className="page-title"><div><h1>{view === 'home' ? '공모주 일정' : view === 'calendar' ? '공모주 전체 일정' : '내가 모아둔 관심 일정'}</h1><p>{view === 'home' ? '청약부터 환불까지, 날짜로 확인해요.' : view === 'calendar' ? '날짜를 누르면 그날의 일정을 볼 수 있어요.' : '중요한 날짜를 저장하고 다시 확인해요.'}</p></div>{view === 'calendar' && <button className="secondary-button today-button" onClick={() => selectDate(today)}>오늘</button>}</div>
-      {(error || data?.stale) && <div className="notice" role="alert"><Info size={18} /><span>{error || 'DART에 잠시 연결할 수 없어 마지막으로 받은 일정을 보여드려요.'}{data && ` 마지막 확인: ${new Date(data.fetchedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`}</span><button onClick={() => void refresh()} disabled={loading}>다시 시도</button></div>}
+      {error && !data && <div className="notice" role="alert"><Info size={18} /><span>{error}</span><button onClick={() => void refresh()} disabled={loading}>다시 시도</button></div>}
       {!!data?.events.filter(event => !event.broker && event.end > today).length && <div className="notice" role="status"><Info size={18} /><span>주관사 확인이 필요한 일정이 {data.events.filter(event => !event.broker && event.end > today).length}개 있어요. 해당 일정의 상세에서 공시 원문을 확인해 주세요.</span></div>}
-      {(loading || errorCode === 'DART_SYNCING') && !data ? <div className="loading-grid" aria-busy="true" aria-label="공모주 일정을 불러오고 있어요"><div className="skeleton main-skeleton" /><div className="skeleton calendar-skeleton" /><p>DART 공시에서 청약 일정을 확인하고 있어요</p></div> : !data && error ? <Empty title="공시 데이터에 다시 연결해 주세요" text="연결 후 공모주 일정을 확인할 수 있어요." action={<Button onClick={() => void refresh()}>다시 불러오기</Button>} /> : <>
+      {loading && !data ? <div className="loading-grid" aria-busy="true" aria-label="공모주 일정을 불러오고 있어요"><div className="skeleton main-skeleton" /><div className="skeleton calendar-skeleton" /><p>저장된 일정을 불러오고 있어요</p></div> : !data && error ? <Empty title="일정을 다시 불러와 주세요" text="연결 후 공모주 일정을 확인할 수 있어요." action={<Button onClick={() => void refresh()}>다시 불러오기</Button>} /> : <>
       {view === 'home' && <div className="home-layout subscription-first">
           <section className="featured-panel panel"><div className="section-heading"><h2>가장 가까운 청약</h2>{featured && <span className="status-badge">{statusLabel(featured, today)}</span>}</div>{featured ? <>
             <button className="featured-company" onClick={() => open(featured)}>{featured.company}<ChevronRight size={20} /></button><p className="featured-broker">{featured.broker || '주관사 원문 확인'}</p>
-            <p className="featured-date-compact"><CalendarDays size={17} /><strong>{dateRange(featured)}</strong></p>
+            <div className="featured-summary"><p className="featured-date-compact"><CalendarDays size={17} /><strong>{dateRange(featured)}</strong></p></div>
             <Button size="medium" display="full" onClick={() => open(featured)}>청약 일정 자세히 보기</Button>
           </> : <Empty title="새로운 청약을 기다리고 있어요" text="이전 기록은 전체 일정에서 확인해 보세요." />}</section>
         <section className="panel calendar-panel home-calendar" aria-label="홈 공모주 캘린더">
@@ -195,7 +191,7 @@ export default function App() {
       </>}
       {view === 'saved' && <><div className="saved-toolbar"><div className="segmented"><button className={savedFilter === 'upcoming' ? 'selected' : ''} aria-pressed={savedFilter === 'upcoming'} onClick={() => setSavedFilter('upcoming')}>예정된 일정</button><button className={savedFilter === 'all' ? 'selected' : ''} aria-pressed={savedFilter === 'all'} onClick={() => setSavedFilter('all')}>전체</button></div><span className="quiet-label">{savedVisible.length}개 일정</span></div><div className="saved-layout"><section className="panel saved-list">{savedVisible.length ? savedVisible.map(e => row(e)) : <Empty title={savedFilter === 'upcoming' && savedEvents.length ? '저장한 일정이 모두 종료됐어요' : '기억해 둘 공모주를 모아보세요'} text={savedEvents.length ? '전체를 누르면 이전에 저장한 일정을 볼 수 있어요.' : '일정 옆 책갈피를 누르면 여기에 모아드려요.'} action={<Button variant="weak" onClick={() => go('calendar')}>공모주 일정 둘러보기</Button>} />}</section></div></>}
       </>}
-      <footer className="page-footer"><div><Mark small /><strong>공모두</strong><span>공시로 확인하는 청약 일정</span></div><p>DART 증권신고서를 바탕으로 제공해요. 청약 전 주관사 공지와 공시를 확인해 주세요.</p><button onClick={() => go(`${view}/guide/1`)}>데이터 출처 및 이용 안내 <ExternalLink size={12} /></button></footer>
+      <footer className="page-footer"><p className="collection-note">공시 일정은 6시간마다 업데이트해요.</p><div><Mark small /><strong>공모두</strong><span>공시로 확인하는 청약 일정</span></div><p>DART 증권신고서를 바탕으로 제공해요. 청약 전 주관사 공지와 공시를 확인해 주세요.</p><button onClick={() => go(`${view}/guide/1`)}>데이터 출처 및 이용 안내 <ExternalLink size={12} /></button></footer>
     </main>
     <nav className="mobile-nav" aria-label="하단 메뉴">{tabs.map(({ id, label, icon: Icon }) => <a key={id} href={`#${id}`} className={view === id ? 'active' : ''} aria-current={view === id ? 'page' : undefined}><Icon size={21} strokeWidth={view === id ? 2.3 : 1.7} /><span>{label}</span></a>)}</nav>
     {route[1] === 'event' && <Sheet title={active?.company || '일정 상세'} onClose={closeSheet}>{active ? <>
@@ -203,14 +199,18 @@ export default function App() {
       {activeDateEvidence?.basis==='broker-announcement' && <p className="small-note">이 날짜의 출처는 증권사 공개 안내예요. 예정 일정은 변경될 수 있어요.</p>}
       {!events.some(e => e.id === active.id) && <div className="notice"><Info size={17} />기기에 저장한 일정이에요. 최신 일정은 원본을 확인해 주세요.</div>}
       <div className="detail-date"><span>{kindLabels[active.kind]} 일정</span><strong>{active.start.slice(0, 4)}. {dateRange(active)}</strong><p>{active.allDay ? '날짜 단위 일정이에요. 접수 시간은 주관사에서 확인해 주세요.' : `${new Date(active.startAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} ~ ${new Date(active.endAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`}</p></div>
-      <div className="detail-section"><h3>확인할 정보</h3><dl><div><dt>주관사</dt><dd>{active.broker || '원본 확인 필요'}</dd></div><div><dt>{active.disclosure?.priceLabel || '이전 저장 가격'}</dt><dd>{active.priceText || '공시 원문 확인 필요'}</dd></div><div><dt>데이터 출처</dt><dd>{active.disclosure ? 'DART 증권신고서' : '이전 Google 캘린더 저장 기록'}</dd></div></dl>{active.disclosure && <p className="small-note">{active.disclosure.brokerSource === 'document' ? '주관사는 이 공시의 원문 인수인 표에서 확인했어요.' : active.broker ? '주관사는 공시의 인수인 정보예요.' : '주관사를 자동으로 확인하지 못했어요. 아래 공시 원문에서 확인해 주세요.'} 일반청약 가능 여부는 증권사 공지를 확인해 주세요.</p>}<p className="small-note">공시 모집가액을 그대로 표시해요. 확정 여부와 단위는 원문을 확인해 주세요.</p></div>
-      <div className="detail-section"><h3>공시로 확인한 일정</h3><div className="detail-timeline">{(['subscription', 'refund', 'listing'] as const).map(kind => { const event = related.find(e => e.kind === kind); return <div key={kind} className={event ? 'known' : ''}><i>{event ? <Check size={12} /> : null}</i><span>{kind==='listing'?'상장 예정':kindLabels[kind]}</span><strong>{event ? dateRange(event) : '일정 미등록'}</strong></div>; })}</div></div>
-      {active.disclosure && <div className="detail-section"><h3>날짜 확인 근거</h3>{(['refund','listing'] as const).map(kind=>{const evidence=active.disclosure?.[kind];return evidence?<div className="date-evidence" key={kind}><strong>{kind==='refund'?'환불일':'상장 예정일'} · {evidence.date}</strong><p>{evidence.quote}</p><a href={evidence.sourceUrl} target="_blank" rel="noreferrer">{evidence.basis==='broker-announcement'?'증권사 일정 안내':`근거 공시 ${evidence.receiptNo}`} <ExternalLink size={12}/></a></div>:<p className="small-note" key={kind}>{kind==='refund'?'환불일':'상장 예정일'}: 공시 원문에서 확인하지 못했어요.</p>;})}</div>}
+      <div className="detail-section"><h3>공시로 확인한 일정</h3><div className="detail-timeline">{(['subscription', 'refund', 'listing'] as const).map(kind => { const event = related.find(e => e.kind === kind); return <div key={kind} className={event ? 'known' : ''}><i>{event ? <Check size={12} /> : null}</i><span>{kind==='listing'?'상장 예정':kindLabels[kind]}</span><strong>{event ? dateRange(event) : '공시 확인 전'}</strong></div>; })}</div></div>
+      <div className="detail-section"><h3>청약 정보</h3><div className="detail-facts">
+        <ListRow as="div" border="none" horizontalPadding="small" contents={<ListRow.Texts type="2RowTypeA" top="주관사" bottom={active.broker || '원본 확인 필요'} />} />
+        <ListRow as="div" border="none" horizontalPadding="small" contents={<ListRow.Texts type="2RowTypeA" top={active.disclosure?.priceLabel || '이전 저장 가격'} bottom={active.priceText || '공시 원문 확인 필요'} />} />
+      </div>{active.disclosure && <p className="small-note">{active.disclosure.brokerSource === 'document' ? '주관사는 이 공시의 원문 인수인 표에서 확인했어요.' : active.broker ? '주관사는 공시의 인수인 정보예요.' : '주관사를 자동으로 확인하지 못했어요. 아래 공시 원문에서 확인해 주세요.'} 일반청약 가능 여부는 증권사 공지를 확인해 주세요.</p>}<p className="small-note">공시 모집가액을 그대로 표시해요. 확정 여부와 단위는 원문을 확인해 주세요.</p></div>
+
+      <details className="disclosure-details"><summary>공시와 날짜 확인 근거</summary>{active.disclosure && <div className="detail-section"><h3>날짜 확인 근거</h3>{(['refund','listing'] as const).map(kind=>{const evidence=active.disclosure?.[kind];return evidence?<div className="date-evidence" key={kind}><strong>{kind==='refund'?'환불일':'상장 예정일'} · {evidence.date}</strong><p>{evidence.quote}</p><a href={evidence.sourceUrl} target="_blank" rel="noreferrer">{evidence.basis==='broker-announcement'?'증권사 일정 안내':`근거 공시 ${evidence.receiptNo}`} <ExternalLink size={12}/></a></div>:<p className="small-note" key={kind}>{kind==='refund'?'환불일':'상장 예정일'}: 공시 원문에서 확인하지 못했어요.</p>;})}</div>}
       {active.disclosure?.ipoEvidence && <p className="small-note"><a href={active.disclosure.ipoEvidence.sourceUrl} target="_blank" rel="noreferrer">상장 공모 근거 공시 {active.disclosure.ipoEvidence.receiptNo} <ExternalLink size={12} /></a></p>}
       <div className="detail-section"><h3>공시 정보</h3>{active.disclosure ? <dl><div><dt>접수일</dt><dd>{active.disclosure.filedOn}</dd></div><div><dt>접수번호</dt><dd>{active.disclosure.receiptNo}</dd></div><div><dt>보고서</dt><dd>{active.disclosure.reportName}</dd></div><div><dt>납입기일</dt><dd>{active.disclosure.paymentText || '공시 확인 필요'}</dd></div><div><dt>배정공고일</dt><dd>{active.disclosure.allocationText || '공시 확인 필요'}</dd></div></dl> : <p className="small-note">이전 캘린더에서 저장한 기록이에요. DART 공시 데이터로 검증한 일정이 아니에요.</p>}<p className="small-note">납입기일은 환불일과 달라요. 상장일·환불일은 추정하지 않아요.</p></div>
-      <details className="original-event"><summary>{active.disclosure ? '원본 공시 정보 보기' : '이전 출처 원문 보기'}</summary><p>{active.title}</p>{active.description && <p>{active.description}</p>}<a href={active.disclosure?.sourceUrl || 'https://calendar.google.com/calendar/embed?src=gjbox0301%40gmail.com'} target="_blank" rel="noreferrer">{active.disclosure ? 'DART 증권신고서 원문 열기' : '이전 Google 캘린더 열기'} <ExternalLink size={14} /></a></details>
-      <div className="detail-actions"><button className={`detail-save ${saved[active.id] ? 'is-saved' : ''}`} aria-label={`${active.company} 상세 관심 ${saved[active.id] ? '해제' : '저장'}`} aria-pressed={!!saved[active.id]} onClick={() => toggleSave(active)}><Bookmark size={22} fill={saved[active.id] ? 'currentColor' : 'none'} /><span>{saved[active.id] ? '저장됨' : '관심 저장'}</span></button></div>
-    </> : <Empty title="이 일정을 찾을 수 없어요" text="일정이 변경됐을 수 있어요. 전체 일정에서 다시 확인해 주세요." action={<Button onClick={closeSheet}>일정으로 돌아가기</Button>} />}</Sheet>}
+      <details className="original-event"><summary>{active.disclosure ? '원본 공시 정보 보기' : '이전 출처 원문 보기'}</summary><p>{active.title}</p>{active.description && <p>{active.description}</p>}<a href={active.disclosure?.sourceUrl || 'https://calendar.google.com/calendar/embed?src=gjbox0301%40gmail.com'} target="_blank" rel="noreferrer">{active.disclosure ? 'DART 증권신고서 원문 열기' : '이전 Google 캘린더 열기'} <ExternalLink size={14} /></a></details></details>
+      <div className="detail-actions"><Button display="full" size="large" variant={saved[active.id] ? 'weak' : 'fill'} aria-label={`${active.company} 상세 관심 ${saved[active.id] ? '해제' : '저장'}`} aria-pressed={!!saved[active.id]} onClick={() => toggleSave(active)}><Bookmark size={19} fill={saved[active.id] ? 'currentColor' : 'none'} /> {saved[active.id] ? '관심 일정에서 해제하기' : '관심 일정에 저장하기'}</Button>{active.disclosure && <a className="detail-source" href={active.disclosure.sourceUrl} target="_blank" rel="noreferrer">DART 공시 원문 보기 <ExternalLink size={15} /><span className="sr-only"> (외부 페이지)</span></a>}</div>
+    </> : loading ? <div className="detail-loading" role="status" aria-busy="true">저장된 일정을 불러오고 있어요</div> : error && !data ? <Empty title="일정을 다시 불러와 주세요" text="연결 후 상세 일정을 확인할 수 있어요." action={<Button onClick={() => void refresh()}>다시 불러오기</Button>} /> : <Empty title="이 일정을 찾을 수 없어요" text="일정이 변경됐을 수 있어요. 전체 일정에서 다시 확인해 주세요." action={<Button onClick={closeSheet}>일정으로 돌아가기</Button>} />}</Sheet>}
     {route[1] === 'guide' && <Sheet title="공모두 이용 안내" onClose={closeSheet}><div className="guide-tabs">{guides.map((g, i) => <button className={Number(route[2] || 0) === i ? 'active' : ''} key={g.eyebrow} onClick={() => go(`${view}/guide/${i}`)}>{g.eyebrow}</button>)}</div>{(() => { const guide = guides[Number(route[2])] || guides[0]; return <><h2 className="detail-title">{guide.title}</h2><p className="guide-intro">{guide.intro}</p><div className="guide-steps">{guide.steps.map(([title, text], i) => <div key={title}><span>{i + 1}</span><div><h3>{title}</h3><p>{text}</p></div></div>)}</div>{guide === guides[1] && <a className="source-external" href={data?.source.url || 'https://dart.fss.or.kr/dsac008/main.do'} target="_blank" rel="noreferrer">DART 청약 달력에서 직접 확인하기 <ExternalLink size={16} /></a>}<Button display="full" size="large" onClick={closeSheet}>확인했어요</Button></>; })()}</Sheet>}
     {toast && <div className="toast" role="status"><Check size={18} />{toast}</div>}
   </div>;
