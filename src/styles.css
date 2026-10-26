@@ -505,3 +505,54 @@ dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
   .guide-tabs button { font-size:12px; white-space:nowrap; }
   .page-topline { font-size:12px; flex-wrap:wrap; }
 }
+
+/* Consumer polish: one emerald action, a clear date pair, and compact reading rhythm. */
+.featured-controls { display:flex; align-items:center; gap:8px; }
+.featured-controls .save-button { color:var(--muted); }
+.featured-controls .save-button.is-saved { color:var(--accent); }
+.subscription-first .featured-company { font-size:24px; line-height:1.35; letter-spacing:-.035em; margin-top:12px; }
+.subscription-first .featured-broker { font-size:14px; margin-top:8px; margin-bottom:0; }
+.featured-summary { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(0,1fr); gap:16px; padding:18px 0; margin:0; }
+.featured-period,.featured-refund { display:flex; flex-direction:column; gap:5px; }
+.featured-period > span,.featured-refund > span { font-size:13px; color:var(--muted); }
+.featured-period strong { font-size:25px; font-weight:650; letter-spacing:-.035em; font-variant-numeric:tabular-nums; }
+.featured-refund { border-left:1px solid var(--border); padding-left:16px; }
+.featured-refund strong { font-size:17px; line-height:37.5px; font-weight:600; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.saved-return { display:flex; align-items:center; width:100%; gap:12px; text-align:left; padding:16px; margin:12px 0; border-radius:14px; background:var(--accent-pale); }
+.saved-return > span { flex:1; min-width:0; display:grid; gap:3px; }
+.saved-return strong { font-size:14px; font-weight:600; color:var(--accent-dark); }
+.saved-return > span > span { font-size:13px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.saved-return svg { color:var(--accent-dark); }
+.preparation-section { margin:28px 0; padding:20px 0; border-top:1px solid var(--border); }
+.preparation-section h3 { font-size:17px; }
+.preparation-count { font-size:13px; color:var(--accent-dark); font-variant-numeric:tabular-nums; }
+.preparation-description { font-size:14px; color:var(--muted); margin-top:6px; }
+.preparation-progress { height:4px; border-radius:4px; background:var(--raised); overflow:hidden; margin:16px 0 8px; }
+.preparation-progress > span { display:block; height:100%; background:var(--accent); transition:width .16s ease-out; }
+.preparation-step { display:flex; align-items:flex-start; gap:12px; padding:16px 0; cursor:pointer; }
+.preparation-step + .preparation-step { border-top:1px solid var(--rule); }
+.preparation-step input { appearance:auto; width:22px; height:22px; margin:1px 0 0; flex-shrink:0; accent-color:var(--accent); }
+.preparation-step > span { display:grid; gap:5px; }
+.preparation-step strong { font-size:15px; font-weight:600; }
+.preparation-step > span > span { font-size:13px; line-height:1.6; color:var(--muted); }
+.detail-date { padding:20px; margin-top:20px; }
+.detail-date strong { font-size:24px; }
+.detail-section { margin-top:24px; }
+.app-shell .event-company { font-size:16px; line-height:1.4; }
+.app-shell .event-date { font-size:15px; font-weight:600; letter-spacing:-.015em; }
+.event-row .event-symbol { background:transparent; width:24px; height:24px; border-radius:0; }
+button:active:not(:disabled) { transform:translateY(1px); }
+@media (max-width:600px) {
+  .subscription-first .featured-panel { padding:16px 20px 20px; }
+  .subscription-first .featured-company { font-size:22px; }
+  .featured-period strong { font-size:24px; }
+  .featured-refund strong { font-size:16px; line-height:36px; }
+  .featured-summary { gap:12px; padding:16px 0 18px; }
+  .featured-refund { padding-left:12px; }
+  .detail-timeline { padding:12px 0; }
+  .app-shell .detail-title { font-size:24px; line-height:1.4; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .preparation-progress > span { transition:none; }
+  button:active:not(:disabled) { transform:none; }
+}
