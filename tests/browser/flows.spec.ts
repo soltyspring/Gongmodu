@@ -56,6 +56,9 @@ test('홈 빠른 저장과 청약 준비 기록을 다시 방문해 확인하고
 
 test('월간 달력, exclusive 종료, 검색, 종류 필터, 스팩 제외, 월 이동', async ({ page }) => {
   await setup(page); await page.goto('/#calendar');
+  await expect(page.locator('.page-topline')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '전체 일정', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '일정 새로고침' })).toHaveCount(0);
   await page.getByRole('button', { name: '2026-10-26, 일정 2개', exact: true }).click();
   await expect(page.locator('.selected-list .event-row')).toHaveCount(2);
   await page.getByRole('button', { name: '2026-10-28, 일정 2개', exact: true }).click();
@@ -74,6 +77,22 @@ test('월간 달력, exclusive 종료, 검색, 종류 필터, 스팩 제외, 월
   await page.getByRole('button', { name: '오늘', exact: true }).click();
   await expect(page.locator('.list-mode')).toContainText('2026년 10월');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('홈 문구가 청약 시작과 마감 날짜에 맞게 바뀌어요', async ({ page }) => {
+  await setup(page); await page.goto('/');
+  const heading = page.locator('.featured-panel h2');
+  await expect(heading).toHaveText('내일 청약이 시작돼요');
+  await page.clock.setFixedTime(new Date('2026-10-26T03:00:00Z'));
+  await page.reload();
+  await expect(heading).toHaveText('지금 청약을 진행하고 있어요');
+  await page.clock.setFixedTime(new Date('2026-10-27T03:00:00Z'));
+  await page.reload();
+  await expect(heading).toHaveText('오늘 마감 예정이에요');
+  await expect(page.locator('.featured-company')).toHaveText('한빛테크');
+  await page.clock.setFixedTime(new Date('2026-10-29T03:00:00Z'));
+  await page.reload();
+  await expect(heading).toHaveText('곧 시작하는 청약이에요');
 });
 
 test('직접 상세 진입, Escape 닫기, 브라우저 뒤로 가기, 안내', async ({ page }) => {
