@@ -187,12 +187,20 @@ test('달력 날짜와 일정 글자가 읽기 쉬운 크기이고 오늘 버튼
   await setup(page); await page.goto('/#calendar');
   const calendar = page.locator('.schedule-layout .calendar');
   await expect(calendar.locator('.day-number').first()).toHaveCSS('font-size', '16px');
-  // Wide screens show names; phones show colour bars and keep names in the selected-day list.
+  // Phones keep names on taller solid bars; a multi-day label spans its days instead of repeating.
   if (page.viewportSize()!.width <= 600) {
     await expect(calendar).toHaveClass(/\bbars\b/);
-    await expect(calendar.locator('.calendar-event').first()).toHaveCSS('height', '5px');
-    await expect(calendar.locator('.calendar-event').first()).toHaveCSS('font-size', '0px');
+    const first = calendar.locator('.calendar-event').first();
+    await expect(first).toHaveCSS('height', '18px');
+    await expect(first).toHaveCSS('font-size', '12px');
+    await expect(calendar.locator('.calendar-event-label').first()).toBeVisible();
   } else await expect(calendar.locator('.calendar-event').first()).toHaveCSS('font-size', '13px');
+  // 한빛테크 subscription 10.26–10.27: one label, two cells wide, no placeholder text on day two.
+  const label = calendar.getByRole('button', { name: '2026-10-26, 일정 2개', exact: true }).locator('.calendar-event.subscription .calendar-event-label', { hasText: '한빛테크' });
+  await expect(label).toHaveCount(1);
+  const cell = await calendar.getByRole('button', { name: '2026-10-26, 일정 2개', exact: true }).boundingBox();
+  expect((await label.boundingBox())!.width).toBeGreaterThan(cell!.width * 1.5);
+  await expect(calendar.getByRole('button', { name: '2026-10-27, 일정 2개', exact: true }).locator('.calendar-event.subscription .calendar-event-label', { hasText: '한빛테크' })).toHaveCount(0);
   await expect(calendar.locator('.calendar-weekdays')).toHaveCSS('font-size', '14px');
   const today = calendar.getByRole('button', { name: '오늘', exact: true });
   expect((await today.boundingBox())!.height).toBeGreaterThanOrEqual(44);

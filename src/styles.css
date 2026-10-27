@@ -867,20 +867,24 @@ button:active:not(:disabled) { transform:translateY(1px); }
 }
 @media (prefers-reduced-motion:reduce) { .app-action { transition:none; } .app-shell .app-action:active:not(:disabled) { transform:none; } }
 
-/* Narrow calendars: colour bars instead of clipped names (dates stay large, names in the day list). */
-.calendar.bars .calendar-day,.calendar.bars.overview .calendar-day,.view-calendar .calendar.bars .calendar-day { min-height:62px; gap:6px; padding:6px 0 4px; }
-.calendar.bars .day-events { gap:3px; padding:0 1px; }
-.calendar.bars .calendar-event,.calendar.bars.overview .calendar-event { height:5px; line-height:5px; padding:0; font-size:0; color:transparent; border-radius:0; }
-.calendar.bars .calendar-event.subscription { background:var(--accent); }
-.calendar.bars .calendar-event.refund { background:var(--refund); }
-.calendar.bars .calendar-event.listing { background:var(--listing); }
-.calendar.bars .calendar-event.other { background:#b0b8c1; }
-.calendar.bars .calendar-event.starts { border-radius:3px 0 0 3px; margin-left:3px; }
-.calendar.bars .calendar-event.ends { border-radius:0 3px 3px 0; margin-right:3px; }
-.calendar.bars .calendar-event.starts.ends { border-radius:3px; }
-.calendar.bars .event-spacer,.calendar.bars.overview .event-spacer { height:5px; }
-.calendar.bars .more-events,.calendar.bars.overview .more-events { font-size:11px; line-height:12px; color:var(--subtle); }
-.calendar.bars .calendar-legend i.dot { width:8px; height:4px; border-radius:2px; }
+/* Calendar names span the event's days in each week row; one label per bar, never repeated. */
+.calendar-event { position:relative; overflow:visible; text-overflow:clip; }
+.calendar-event-label { position:absolute; inset:0 auto 0 0; z-index:1; padding:0 4px; overflow:hidden; white-space:nowrap; pointer-events:none;
+  -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 10px),transparent); mask-image:linear-gradient(to right,#000 calc(100% - 10px),transparent); }
+/* Phones: taller cells and solid colour bars so 12px names stay legible; three rows, then +n. */
+.calendar.bars .calendar-day,.calendar.bars.overview .calendar-day,.view-calendar .calendar.bars .calendar-day { min-height:96px; gap:4px; padding:6px 0 4px; }
+.calendar.bars .day-events { gap:2px; }
+.calendar.bars .calendar-event,.calendar.bars.overview .calendar-event { height:18px; line-height:18px; padding:0; font-size:12px; font-weight:600; letter-spacing:-.04em; color:#fff; border-radius:0; }
+.calendar.bars .calendar-event-label { padding:0 3px; }
+.calendar.bars .calendar-event.subscription { background:var(--accent); color:#fff; }
+.calendar.bars .calendar-event.refund { background:var(--refund); color:#fff; }
+.calendar.bars .calendar-event.listing { background:var(--listing); color:#fff; }
+.calendar.bars .calendar-event.other { background:#6b7684; color:#fff; }
+.calendar.bars .calendar-event.starts { border-radius:4px 0 0 4px; margin-left:2px; }
+.calendar.bars .calendar-event.ends { border-radius:0 4px 4px 0; margin-right:2px; }
+.calendar.bars .calendar-event.starts.ends { border-radius:4px; }
+.calendar.bars .event-spacer,.calendar.bars.overview .event-spacer { height:18px; }
+.calendar.bars .more-events,.calendar.bars.overview .more-events { font-size:11px; line-height:14px; color:var(--subtle); }
 /* Empty day: one sentence, then a shortcut to the next scheduled date. */
 .day-empty { padding:4px 0 12px; }
 .day-empty > p { font-size:15px; color:var(--muted); padding:8px 0; }

@@ -138,7 +138,13 @@ function Calendar({ month, selected, events, today, onSelect, onMonth, compact =
         <span className="day-number">{Number(day.slice(8))}</span>
         {compact ? <span className="day-dots">{[...new Set(dayEvents.map(x => x.event.kind))].slice(0, 3).map(kind => <i key={kind} className={`dot ${kind}`} />)}</span> : <span className="day-events">{Array.from({ length: lanesShown }, (_, lane) => {
           const e = dayEvents.find(x => x.lane === lane)?.event;
-          return e ? <span key={lane} className={`calendar-event ${e.kind} ${e.start === day ? 'starts' : ''} ${lastDay(e) === day ? 'ends' : ''}`} title={e.title}>{e.start === day || new Date(`${day}T12:00:00Z`).getUTCDay() === 0 ? calendarName(e.company) : '　'}</span> : <span className="event-spacer" key={lane} />;
+          if (!e) return <span className="event-spacer" key={lane} />;
+          // The name starts the bar (or a new week row) and spans the event's days in that row,
+          // so a 3-day subscription gets 3 cells of width instead of being clipped to one.
+          const weekday = new Date(`${day}T12:00:00Z`).getUTCDay();
+          const head = e.start === day || weekday === 0;
+          const span = head ? Math.min(dayDiff(day, lastDay(e)) + 1, 7 - weekday) : 0;
+          return <span key={lane} className={`calendar-event ${e.kind} ${e.start === day ? 'starts' : ''} ${lastDay(e) === day ? 'ends' : ''}`} title={e.title}>{head ? <span className="calendar-event-label" style={{ width: `calc(${span * 100}% + ${(span - 1) * 4}px)` }}>{calendarName(e.company)}</span> : null}</span>;
         })}{dayEvents.some(x => x.lane >= lanesShown) && <span className="more-events">+{dayEvents.filter(x => x.lane >= lanesShown).length}</span>}</span>}
       </button>;
     })}</div>
