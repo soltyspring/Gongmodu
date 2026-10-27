@@ -191,6 +191,35 @@ test('홈은 가까운 청약을 먼저 보여주고 바로 다음 달력에서 
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
+test('다가오는 일정은 내일부터 시작하는 일정만 표시하고 오늘 진행 중인 청약은 유지', async ({ page }) => {
+  await setup(page);
+  await page.clock.setFixedTime(new Date('2026-10-27T03:00:00Z'));
+  await page.goto('/');
+  const todayList = page.locator('.home-day-list');
+  const upcoming = page.locator('.upcoming-section .event-list');
+  // 어제 시작해 오늘 마감하는 청약과 오늘 시작하는 청약 모두 오늘 영역에 남아요.
+  await expect(todayList.locator('.event-row')).toHaveCount(2);
+  await expect(todayList).toContainText('한빛테크');
+  await expect(todayList).toContainText('미래스팩1호');
+  await expect(page.locator('.featured-company')).toHaveText('한빛테크');
+  await expect(upcoming.locator('.event-row')).toHaveCount(2);
+  await expect(page.locator('.upcoming-section .heading-count')).toHaveText('2');
+  await expect(upcoming).not.toContainText('청약 · 삼성');
+  await expect(upcoming).not.toContainText('미래스팩1호');
+  // 같은 회사라도 내일의 환불은 별도 일정이므로 제외하지 않아요.
+  await expect(upcoming).toContainText('한빛테크');
+  await expect(upcoming).toContainText('환불 · 삼성');
+  await expect(upcoming).toContainText('다음기업');
+  // 오늘 일정만 있어도 가까운 청약은 사라지지 않고, 예정 목록만 비어요.
+  await page.route('**/api/schedule', route => route.fulfill({ json: { ...data, events: events.filter(event => event.id === 'a') } }));
+  await page.reload();
+  await expect(page.locator('.featured-company')).toHaveText('한빛테크');
+  await expect(todayList.locator('.event-row')).toHaveCount(1);
+  await expect(upcoming.locator('.event-row')).toHaveCount(0);
+  await expect(page.locator('.upcoming-section .heading-count')).toHaveText('0');
+  await expect(upcoming).toContainText('예정된 일정이 아직 없어요');
+});
+
 test('화면을 열어 두거나 조회가 실패해도 자동 재수집 요청을 반복하지 않음', async ({ page }) => {
   await setup(page); await page.unroute('**/api/schedule');
   let calls=0;

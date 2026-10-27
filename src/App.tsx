@@ -126,8 +126,9 @@ export default function App() {
   try { eventId = route[1] === 'event' ? decodeURIComponent(route.slice(2).join('/')) : undefined; } catch { eventId = undefined; }
   const active = events.find(e => e.id === eventId) ?? savedEvents.find(e => e.id === eventId);
   const activeDateEvidence=active?.kind==='refund'?active.disclosure?.refund:active?.kind==='listing'?active.disclosure?.listing:null;
-  const upcoming = events.filter(e => e.end > today).sort((a, b) => a.start.localeCompare(b.start) || a.company.localeCompare(b.company, 'ko'));
-  const nextSubscriptions = upcoming.filter(e => e.kind === 'subscription');
+  const remaining = events.filter(e => e.end > today).sort((a, b) => a.start.localeCompare(b.start) || a.company.localeCompare(b.company, 'ko'));
+  const upcoming = remaining.filter(e => e.start > today);
+  const nextSubscriptions = remaining.filter(e => e.kind === 'subscription');
   const featured = nextSubscriptions[0];
   const featuredRefund = featured?.disclosure?.refund?.date;
   const nextSaved = savedEvents.find(event => event.end > today);
