@@ -1,12 +1,10 @@
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
-
 :root {
   --ground: #f6f7f9; --surface: #fff; --raised: #f2f4f6; --active: #e9edf0;
   --text: #202b37; --muted: #606d7a; --faint: #687581; --border: #e9edf0; --rule: #f0f2f4;
   --accent: #087f70; --accent-dark: #07665b; --accent-pale: #e6f4ef;
   --listing: #4262ab; --listing-pale: #edf1fb; --refund: #866b30; --refund-pale: #f7f1e4;
   --radius-card: 20px; --radius-control: 10px; --gap: 24px;
-  --font: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
   font-family: var(--font); color: var(--text); font-synthesis: none; font-weight: 400;
   background: var(--ground); font-size: 15px; line-height: 1.5; letter-spacing: -.025em;
 }
@@ -35,6 +33,20 @@ strong { font-weight: 650; }
 .app-shell a { color: inherit; }
 .app-shell button,.app-shell input { font-family: var(--font); }
 .app-shell .tds-action { border-radius: 12px; background-color: var(--button-background-color); }
+.app-action { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:48px; padding:12px 18px; border-radius:12px; background:var(--accent); color:#fff; font-size:16px; font-weight:650; line-height:1.5; }
+.app-action.full { width:100%; }
+.app-action.weak { background:var(--accent-pale); color:var(--accent-dark); }
+.app-action:active { filter:brightness(.94); }
+.company-info { padding-bottom:24px; }
+.company-intro { font-size:18px; font-weight:650; margin-top:8px; }
+.company-info > section { margin-top:24px; }
+.company-info section > p:not(.small-note) { color:#4b596a; line-height:1.8; font-size:15px; margin-top:10px; word-break:keep-all; }
+.company-period { border-top:1px solid var(--border); padding:14px 0; }
+.company-period h4 { margin:0 0 8px; font-size:14px; font-weight:650; }
+.company-period dl { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.company-period dl > div { display:flex; flex-direction:column; align-items:flex-start; gap:4px; min-width:0; }
+.company-period dt { font-size:13px; color:var(--muted); }
+.company-period dd { font-size:15px; font-weight:650; font-variant-numeric:tabular-nums; text-align:left; overflow-wrap:anywhere; }
 /* Keep the native TDS press feedback flat; no decorative gradient layer. */
 .app-shell button div { background-image: none !important; }
 :root[data-native] .mobile-header { display: none; }
@@ -586,7 +598,7 @@ button:active:not(:disabled) { transform:translateY(1px); }
   .subscription-first .featured-company { font-size:22px; }
   .featured-period strong { font-size:24px; }
   .featured-refund strong { font-size:16px; line-height:36px; }
-  .featured-summary { gap:12px; padding:16px 0 18px; }
+  .featured-summary { gap:12px; padding:12px 0 14px; }
   .featured-refund { padding-left:12px; }
   .detail-timeline { padding:12px 0; }
   .app-shell .detail-title { font-size:24px; line-height:1.4; }

@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode, type ComponentProps } from 'react';
-import { Button as TDSButton, ListRow } from '@toss/tds-mobile';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type ComponentProps } from 'react';
 import { Bookmark, CalendarDays, Check, ChevronLeft, ChevronRight, CircleHelp, ExternalLink, Home, Info, Search, X } from 'lucide-react';
 import { assignLanes, calendarCells, changeMonth, dateKey, dateRange, dayDiff, includesDate, isScheduleEvent, isSubscriptionClosed, kindLabels, lastDay, shortDate, statusLabel, verifiedCloseTime, type EventKind, type ScheduleEvent, type ScheduleResponse } from '../shared/schedule';
 import { closeNative, connectNative, isNativeToss, openExternal } from './platform';
@@ -8,7 +7,9 @@ import { PreparationChecklist } from './PreparationChecklist';
 type View = 'home' | 'calendar' | 'saved';
 type Saved = Record<string, ScheduleEvent>;
 const storageKey = 'gongmoa:saved:v2';
-const Button = (props: ComponentProps<typeof TDSButton>) => <TDSButton {...props} className="tds-action" />;
+const TossBrokerFact=lazy(()=>import('./TossBrokerFact'));
+const CompanyInfo=lazy(()=>import('./CompanyInfo'));
+const Button = ({display, size, variant='fill', ...props}:ComponentProps<'button'>&{display?:'full';size?:'large';variant?:'weak'|'fill'}) => <button {...props} className={`app-action ${variant} ${display==='full'?'full':''}`} />;
 const displayPrice = (event: ScheduleEvent) => {
   const price = event.priceText?.trim();
   if (!price) return '아직 확인되지 않았어요';
@@ -169,6 +170,7 @@ export default function App() {
   const savedEvents = useMemo(() => Object.values(saved).map(e => events.find(current => current.id === e.id) ?? e).sort((a, b) => a.start.localeCompare(b.start)), [saved, events]);
   let eventId: string | undefined;
   try { eventId = route[1] === 'event' ? decodeURIComponent(route.slice(2).join('/')) : undefined; } catch { eventId = undefined; }
+  if(route[1]==='company')try{eventId=decodeURIComponent(route.slice(2).join('/'));}catch{eventId=undefined;}
   const active = events.find(e => e.id === eventId) ?? savedEvents.find(e => e.id === eventId);
   const activeDateEvidence=active?.kind==='refund'?active.disclosure?.refund:active?.kind==='listing'?active.disclosure?.listing:null;
   const remaining = events.filter(e => e.end > today).sort((a, b) => a.start.localeCompare(b.start) || a.company.localeCompare(b.company, 'ko'));
@@ -199,12 +201,12 @@ export default function App() {
     } else location.hash = to;
   };
   const open = (event: ScheduleEvent) => go(`${view}/event/${encodeURIComponent(event.id)}`);
-  const closeSheet = () => { history.replaceState(null, '', `#${view}`); window.dispatchEvent(new HashChangeEvent('hashchange')); };
+  const closeSheet = () => { const target=route[1]==='company'&&active?`${view}/event/${encodeURIComponent(active.id)}`:view; history.replaceState(null, '', `#${target}`); window.dispatchEvent(new HashChangeEvent('hashchange')); };
   useEffect(() => connectNative(() => {
     if (route[1]) closeSheet();
     else if (view !== 'home') go('home');
     else void closeNative();
-  }), [hash]);
+  }), [hash, active?.id]);
   function selectDate(day: string) { setSelected(day); setMonth(day.slice(0, 7)); }
   function moveMonth(delta: number) { const next = changeMonth(month, delta); setMonth(next); setSelected(next === today.slice(0, 7) ? today : `${next}-01`); }
   function toggleSave(event: ScheduleEvent) {
@@ -242,7 +244,7 @@ export default function App() {
           </> : <Empty title="새로운 청약을 기다리고 있어요" text="이전 기록은 전체 일정에서 확인해 보세요." />}</section>
         <section className="panel calendar-panel home-calendar" aria-label="홈 공모주 캘린더">
           <Calendar month={month} selected={selected} events={events} today={today} onSelect={selectDate} onMonth={moveMonth} overview />
-          <div className="home-day-heading"><h3>{shortDate(selected)} 일정</h3><button className="text-button" onClick={() => { setCalendarMode('month'); go('calendar'); }}>전체 일정 <ChevronRight size={16} /></button></div>
+          <div className="home-day-heading"><h3>{selected===today?'오늘 일정':`${shortDate(selected)} 일정`}</h3><button className="text-button" onClick={() => { setCalendarMode('month'); go('calendar'); }}>전체 일정 <ChevronRight size={16} /></button></div>
           <div className="home-day-list">{events.filter(e => includesDate(e, selected)).length ? events.filter(e => includesDate(e, selected)).map(e => row(e, false)) : <p className="home-day-empty">이날은 등록된 일정이 없어요.</p>}</div>
         </section>
           <section className="upcoming-section"><div className="section-heading"><h2>다가오는 일정 <span className="heading-count">{upcoming.length}</span></h2><button className="text-button" onClick={() => { setCalendarMode('list'); go('calendar'); }}>전체 보기 <ChevronRight size={16} /></button></div>{nextSaved && <button className="saved-return" onClick={() => go('saved')}><Bookmark size={18} /><span><strong>내 관심 일정</strong><span>{nextSaved.company} · {dateRange(nextSaved)}</span></span><ChevronRight size={18} /></button>}<div className="panel event-list">{upcoming.length ? upcoming.slice(0, 4).map(e => row(e)) : <Empty title="예정된 일정이 아직 없어요" text="전체 일정에서 이전 기록을 확인할 수 있어요." />}</div></section>
@@ -265,13 +267,14 @@ export default function App() {
       {active.kind === 'subscription' && <p className="closing-time detail-closing-time">{verifiedCloseTime(active) ? `${verifiedCloseTime(active)!.time} 마감 · 공시 기준` : '보통 청약 마지막 날 16:00에 마감해요. 정확한 시간은 주관사에서 확인해 주세요.'}</p>}
       <div className="detail-section"><h3>일정</h3><div className="detail-timeline">{(['subscription', 'refund', 'listing'] as const).map(kind => { const event = related.find(e => e.kind === kind) ?? (active.kind === kind ? active : undefined); return <div key={kind} className={event ? 'known' : ''}><i>{event ? <Check size={12} /> : null}</i><span>{kind==='listing'?'상장 예정':kindLabels[kind]}</span><strong>{event ? dateRange(event) : '공시 확인 전'}</strong></div>; })}</div></div>
       <div className="detail-section"><h3>청약 정보</h3><div className="detail-facts">
-        <ListRow as="div" border="none" horizontalPadding="small" contents={<ListRow.Texts type="2RowTypeA" top="주관사" bottom={active.broker || '원본 확인 필요'} />} />
+        <Suspense fallback={<p>주관사 · {active.broker||'원본 확인 필요'}</p>}><TossBrokerFact broker={active.broker} /></Suspense>
       </div></div>
       {active.kind === 'subscription' && <PreparationChecklist key={active.id} event={active} />}
-      <div className="detail-actions"><Button display="full" size="large" variant={saved[active.id] ? 'weak' : 'fill'} aria-label={`${active.company} 상세 관심 ${saved[active.id] ? '해제' : '저장'}`} aria-pressed={!!saved[active.id]} onClick={() => toggleSave(active)}><Bookmark size={19} fill={saved[active.id] ? 'currentColor' : 'none'} /> {saved[active.id] ? '관심 일정에서 해제하기' : '관심 일정에 저장하기'}</Button>{active.disclosure && <a className="detail-source" href={active.disclosure.sourceUrl} target="_blank" rel="noreferrer">DART 공시 원문 보기 <ExternalLink size={15} /><span className="sr-only"> (외부 페이지)</span></a>}</div>
+      <div className="detail-actions"><Button display="full" size="large" onClick={() => go(`${view}/company/${encodeURIComponent(active.id)}`)}>이 기업에 대한 정보가 궁금하신가요? <ChevronRight size={18} /></Button>{active.disclosure && <a className="detail-source" href={active.disclosure.sourceUrl} target="_blank" rel="noreferrer">DART 공시 원문 보기 <ExternalLink size={15} /><span className="sr-only"> (외부 페이지)</span></a>}</div>
     </> : loading ? <div className="detail-loading" role="status" aria-busy="true">저장된 일정을 불러오고 있어요</div> : error && !data ? <Empty title="일정을 다시 불러와 주세요" text="연결 후 상세 일정을 확인할 수 있어요." action={<Button onClick={() => void refresh()}>다시 불러오기</Button>} /> : <Empty title="이 일정을 찾을 수 없어요" text="일정이 변경됐을 수 있어요. 전체 일정에서 다시 확인해 주세요." action={<Button onClick={closeSheet}>일정으로 돌아가기</Button>} />}</Sheet>}
     {route[1] === 'guide' && <Sheet title="공모두 이용 안내" onClose={closeSheet}><div className="guide-tabs">{guides.map((g, i) => <button className={Number(route[2] || 0) === i ? 'active' : ''} key={g.eyebrow} onClick={() => go(`${view}/guide/${i}`)}>{g.eyebrow}</button>)}</div>{(() => { const guide = guides[Number(route[2])] || guides[0]; return <><h2 className="detail-title">{guide.title}</h2><p className="guide-intro">{guide.intro}</p><div className="guide-steps">{guide.steps.map(([title, text], i) => <div key={title}><span>{i + 1}</span><div><h3>{title}</h3><p>{text}</p></div></div>)}</div>{guide === guides[1] && <a className="source-external" href={data?.source.url || 'https://dart.fss.or.kr/dsac008/main.do'} target="_blank" rel="noreferrer">DART 청약 달력에서 직접 확인하기 <ExternalLink size={16} /></a>}<Button display="full" size="large" onClick={closeSheet}>확인했어요</Button></>; })()}</Sheet>}
     {route[1] === 'policy' && (route[2] === 'terms' || route[2] === 'privacy') && <Sheet title={route[2] === 'terms' ? '이용약관' : '개인정보 처리방침'} onClose={closeSheet}><PolicyDocument kind={route[2]} /><Button display="full" size="large" onClick={closeSheet}>확인했어요</Button></Sheet>}
+    {route[1]==='company'&&<Sheet title="기업 요약" onClose={closeSheet}>{active?<><Suspense fallback={<p role="status">기업 정보를 열고 있어요</p>}><CompanyInfo event={active}/></Suspense><Button display="full" size="large" onClick={closeSheet}>일정으로 돌아가기</Button></>:<p role="status">{loading?'저장된 일정을 불러오고 있어요':'이 기업의 일정을 찾을 수 없어요'}</p>}</Sheet>}
     {toast && <div className="toast" role="status"><Check size={18} />{toast}</div>}
   </div>;
 }

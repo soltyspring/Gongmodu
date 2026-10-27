@@ -7,7 +7,7 @@ export default defineConfig({
   preview: { host: '0.0.0.0', port: 4173 },
   build: {
     rollupOptions: {
-      output: { manualChunks: { 'toss-design-system': ['@toss/tds-mobile', '@toss/tds-mobile-ait'], 'toss-sdk': ['@apps-in-toss/web-framework'] } },
+      output: { manualChunks: { 'toss-sdk': ['@apps-in-toss/web-framework'] } },
     },
     // TDS is an official UI runtime, cached separately from the application code.
     chunkSizeWarningLimit: 1200,
