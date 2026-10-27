@@ -2,6 +2,7 @@ import { addDays, dateKey, type ScheduleResponse, type ScheduleEvent } from '../
 import { createDartClient, DartError, type DartDocument } from './client.ts';
 import { documentGroups, latestOfferings, normalizeOffering, originalDate, parseDartDates } from './normalize.ts';
 import { brokerKey, disclosedDates, disclosedSubscriptionClose, fullOffering, offeringScope, offeringTerms, type DetailSource } from './details.ts';
+import { summarizeCompany } from './company.ts';
 
 export const DART_SOURCE = { name: 'DART 증권신고서', url: 'https://dart.fss.or.kr/dsac008/main.do' };
 export async function collectDartSchedule(options: { key: string; fetcher?: typeof fetch; now?: () => number; lookbackDays?: number; delayMs?: number; progress?: (done: number, total: number) => void }): Promise<ScheduleResponse> {
@@ -66,6 +67,7 @@ export async function collectDartSchedule(options: { key: string; fetcher?: type
             if(originalDate(previous,older.text)===disclosure.originalFiledOn && fullOffering(older)) {baseSource={document:older,receiptNo:previous.rcept_no};break;}
           }
         }
+        disclosure.companySummary=summarizeCompany(baseSource);
         const currentDates=disclosedDates(latestSource,disclosure.paymentText);
         const baseDates=disclosedDates(baseSource,disclosure.paymentText);
         const currentText=offeringScope(document).text.replace(/\s+/g,' ');

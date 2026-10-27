@@ -1,5 +1,9 @@
 import express from 'express';
 import { createSnapshotReader } from './snapshot.ts';
+import { publicSchedule } from './public-schedule.ts';
+import { gzip } from 'node:zlib';
+import { promisify } from 'node:util';
+const compress=promisify(gzip);
 
 const app = express();
 app.disable('x-powered-by');
@@ -23,7 +27,11 @@ app.get('/api/schedule', async (_req, res) => {
   try {
     const result = await getFeed();
     res.setHeader('Cache-Control', 'no-store');
-    res.json(result);
+    const body=JSON.stringify(publicSchedule(result));
+    res.vary('Accept-Encoding');
+    if(_req.acceptsEncodings('gzip')) {
+      res.setHeader('Content-Encoding','gzip');res.type('json');res.send(await compress(body));
+    } else res.type('json').send(body);
   } catch {
     res.setHeader('Cache-Control', 'no-store');
     res.status(503).json({ code: 'SCHEDULE_UNAVAILABLE', error: '일정을 준비하고 있어요. 잠시 후 다시 확인해 주세요.' });

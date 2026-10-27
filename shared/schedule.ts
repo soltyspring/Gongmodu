@@ -6,6 +6,11 @@ export interface DateEvidence {
 export interface SubscriptionClose {
   time: string; broker: string; receiptNo: string; sourceUrl: string;
 }
+export interface CompanySummary {
+  overview:string|null; revenueModel:string|null;
+  financials:{period:string;revenue:string;operatingProfit:string|null;accounting:string|null}[];
+  unit:string|null; scope:string; receiptNo:string; sourceUrl:string;
+}
 export interface BrokerTerms {
   broker: string; allocatedShares: number | null; equalShares: number | null;
   marginRate: number | null; minShares: number | null; limitShares: number | null;
@@ -25,6 +30,7 @@ export interface DartDisclosure {
   ipoEvidence?: { receiptNo: string; sourceUrl: string };
   refund?: DateEvidence | null; listing?: DateEvidence | null;
   subscriptionClose?: SubscriptionClose | null;
+  companySummary?: CompanySummary;
   terms?: OfferingTerms;
 }
 export interface ScheduleEvent {
