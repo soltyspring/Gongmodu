@@ -602,3 +602,26 @@ button:active:not(:disabled) { transform:translateY(1px); }
   .view-calendar .day-number { font-size:13px; }
   .view-calendar .selected-day-panel > .section-heading { margin:0 4px 8px; }
 }
+
+/* 읽기 쉬운 달력 글자와 간결한 버튼; 터치 영역은 유지해요. */
+.calendar-heading { gap:8px; }
+.month-controls { gap:0; margin-right:-6px; }
+.view-calendar .today-button { min-width:44px; min-height:44px; margin:0 2px 0 0; padding:0 4px; color:var(--accent-dark); font-size:14px; font-weight:600; }
+.calendar-weekdays { font-size:14px; font-weight:500; }
+.calendar .day-number, .overview .day-number, .view-calendar .day-number { width:30px; height:30px; font-size:16px; font-weight:600; }
+.calendar-day.outside .day-number { color:#677582; }
+.calendar-event, .overview .calendar-event { height:21px; line-height:21px; font-size:13px; font-weight:500; }
+.calendar-event.subscription { color:#075c50; }
+.calendar-event.refund { color:#6d521d; }
+.calendar-event.listing { color:#364f8d; }
+.event-spacer, .overview .event-spacer { height:21px; }
+.more-events, .overview .more-events { font-size:13px; line-height:18px; }
+.calendar-legend { font-size:13px; }
+.overview .calendar-day { min-height:78px; }
+.view-calendar .filter-buttons button { padding:0 10px; }
+.view-calendar .segmented button { padding:0 10px; }
+@media(max-width:600px) {
+  .view-calendar .calendar-day { min-height:94px; gap:4px; }
+  .view-calendar .filter-buttons button { padding:0 9px; }
+  .view-calendar .segmented button { padding:0 8px; }
+}

@@ -73,6 +73,7 @@ test('월간 달력, exclusive 종료, 검색, 종류 필터, 스팩 제외, 월
   await setup(page); await page.goto('/#calendar');
   await expect(page.locator('.page-topline')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '전체 일정', exact: true })).toBeVisible();
+  await expect(page.locator('.calendar-heading').getByRole('button', { name: '오늘', exact: true })).toBeVisible();
   await expect(page.locator('.page-title').getByRole('button', { name: '일정 새로고침' })).toHaveCount(0);
   await page.getByRole('button', { name: '2026-10-26, 일정 2개', exact: true }).click();
   await expect(page.locator('.selected-list .event-row')).toHaveCount(2);
@@ -92,6 +93,21 @@ test('월간 달력, exclusive 종료, 검색, 종류 필터, 스팩 제외, 월
   await page.getByRole('button', { name: '오늘', exact: true }).click();
   await expect(page.locator('.list-mode')).toContainText('2026년 10월');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('달력 날짜와 일정 글자가 읽기 쉬운 크기이고 오늘 버튼이 월 이동 옆에서 동작해요', async ({ page }) => {
+  await setup(page); await page.goto('/#calendar');
+  const calendar = page.locator('.schedule-layout .calendar');
+  await expect(calendar.locator('.day-number').first()).toHaveCSS('font-size', '16px');
+  await expect(calendar.locator('.calendar-event').first()).toHaveCSS('font-size', '13px');
+  await expect(calendar.locator('.calendar-weekdays')).toHaveCSS('font-size', '14px');
+  const today = calendar.getByRole('button', { name: '오늘', exact: true });
+  expect((await today.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await calendar.getByRole('button', { name: '다음 달', exact: true }).click();
+  await expect(calendar.getByRole('heading', { name: '2026년 11월' })).toBeVisible();
+  await today.click();
+  await expect(calendar.getByRole('heading', { name: '2026년 10월' })).toBeVisible();
+  await expect(calendar.getByRole('button', { name: '2026-10-25, 일정 0개' })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('홈 문구가 청약 시작과 마감 날짜에 맞게 바뀌어요', async ({ page }) => {
