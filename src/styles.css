@@ -928,3 +928,9 @@ button:active:not(:disabled) { transform:translateY(1px); }
 .app-shell .calendar-day:active:not(:disabled) { transform:none; }
 .calendar-day:active .day-number { background:var(--active); color:var(--text); }
 .calendar-day.selected:active .day-number { background:var(--text); color:var(--surface); opacity:.85; }
+
+/* Featured IPO: one disclosed number that makes the next tap worth it. */
+.featured-signal { display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 8px; margin:-4px 0 14px; padding:12px 14px; border-radius:14px; background:var(--accent-pale); }
+.featured-signal > span:first-child { font-size:13px; font-weight:600; color:var(--accent-dark); }
+.featured-signal strong { font-size:20px; font-weight:700; letter-spacing:-.02em; color:var(--accent-dark); font-variant-numeric:tabular-nums; }
+.featured-signal-sub { margin-left:auto; font-size:13px; font-weight:600; color:var(--accent-dark); font-variant-numeric:tabular-nums; }

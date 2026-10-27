@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type ComponentProps } from 'react';
 import { Bookmark, CalendarDays, Check, ChevronLeft, ChevronRight, CircleHelp, ExternalLink, Home, Info, Search, X } from 'lucide-react';
-import { assignLanes, calendarCells, changeMonth, dateKey, dateRange, dayDiff, includesDate, isScheduleEvent, isSubscriptionClosed, kindLabels, lastDay, shortDate, statusLabel, verifiedCloseTime, type EventKind, type ScheduleEvent, type ScheduleResponse } from '../shared/schedule';
+import { assignLanes, calendarCells, changeMonth, dateKey, dateRange, dayDiff, includesDate, isScheduleEvent, isSubscriptionClosed, kindLabels, offeringResults, lastDay, shortDate, statusLabel, verifiedCloseTime, type EventKind, type ScheduleEvent, type ScheduleResponse } from '../shared/schedule';
 import { closeNative, connectNative, isNativeToss, openExternal, reportNeedsAd, showReportAd } from './platform';
 import { PreparationChecklist } from './PreparationChecklist';
 import { FactsFallback, type Fact } from './detail-facts';
@@ -212,6 +212,7 @@ export default function App() {
     : includesDate(featured, today) ? (lastDay(featured) === today ? '오늘 마감 예정이에요' : '지금 청약을 진행하고 있어요')
     : dayDiff(today, featured.start) === 1 ? '내일 청약이 시작돼요' : '곧 시작하는 청약이에요';
   const featuredRefund = featured?.disclosure?.refund?.date;
+  const featuredResults = featured ? offeringResults(featured) : { demand: null, result: null };
   const nextSaved = savedEvents.find(event => event.end > today);
   const related = active ? events.filter(e => active.disclosure ? e.disclosure?.offeringId === active.disclosure.offeringId : !e.disclosure && e.company === active.company) : [];
   const activeClose = active ? verifiedCloseTime(active) : null;
@@ -279,7 +280,8 @@ export default function App() {
             {featured.priceText && <p className="featured-price">공모가 <strong>{displayPrice(featured)}</strong></p>}
             <div className="featured-summary"><div className="featured-period"><span>청약일</span><strong>{dateRange(featured)}</strong></div><div className="featured-refund"><span>환불일</span><strong>{featuredRefund ? shortDate(featuredRefund) : '공시 확인 전'}</strong></div></div>
             <p className="closing-time">{featuredClose ? `${featuredClose.time} 마감 · 공시 기준` : '보통 마지막 날 16:00 마감 · 증권사마다 달라요'}</p>
-            <Button size="large" display="full" onClick={() => open(featured)}>공모가 보러가기</Button>
+            {featuredResults.demand && <div className="featured-signal"><span>기관 경쟁률</span><strong>{Math.round(featuredResults.demand.ratio).toLocaleString('ko-KR')} : 1</strong>{featuredResults.demand.aboveUpperShare !== null && <span className="featured-signal-sub">상단 이상 {Math.round(featuredResults.demand.aboveUpperShare * 100)}%</span>}</div>}
+            <Button size="large" display="full" onClick={() => open(featured)}>{featuredResults.result && isSubscriptionClosed(featured, nowMinute * 60000) ? '청약 결과 확인하기' : featuredResults.demand ? '수요예측 결과 확인하기' : '청약 정보 확인하기'}</Button>
           </> : <Empty title="새로운 청약을 기다리고 있어요" text="이전 기록은 전체 일정에서 확인해 보세요." />}</section>
         <section className="panel calendar-panel home-calendar" aria-label="홈 공모주 캘린더">
           <Calendar month={month} selected={selected} events={events} today={today} onSelect={selectDate} onMonth={moveMonth} overview />

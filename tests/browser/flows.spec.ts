@@ -24,7 +24,7 @@ test('오늘 일정과 기업 리포트를 확인하고 재무 기간·손실·�
   const sourceUrl='https://m.irgo.co.kr/IPO%EC%9E%90%EB%A3%8C/123/TB/test-IR-BOOK';
   await page.unroute('**/api/schedule');await page.route('**/api/schedule',r=>r.fulfill({json:{...data,events:[{...events[0],disclosure:{...events[0].disclosure,companySummary:summary,companyReferences:[{company:events[0].company,sourceName:'IRGO',sourceUrl,fetchedAt:data.fetchedAt}]}}]}}));
   await page.goto('/');await expect(page.locator('.home-day-heading h3')).toHaveText('오늘 일정');
-  await page.getByRole('button',{name:'공모가 보러가기'}).click();
+  await page.getByRole('button',{name:'청약 정보 확인하기'}).click();
   await expect(page.getByRole('button',{name:/상세 관심 저장/})).toHaveCount(0);
   await page.getByRole('button',{name:'기업 리포트 보기'}).click();
   const company=page.getByRole('dialog',{name:'기업 리포트'});await expect(company).toContainText('의료기기용 부품');await expect(company).toContainText('단위: 만원');await expect(company.locator('.financial-chart-detail')).toContainText('-100');
@@ -42,7 +42,7 @@ test('재무 차트에서 여러 기간을 함께 비교하고 선택한 실적�
     {period:'2024년',revenue:'10,000,000',operatingProfit:'0',netIncome:null,accounting:'K-IFRS'},
   ],unit:'천원',scope:'연결 요약재무정보',receiptNo:events[0].disclosure.receiptNo,sourceUrl:events[0].disclosure.sourceUrl};
   await page.unroute('**/api/schedule');await page.route('**/api/schedule',r=>r.fulfill({json:{...data,events:[{...events[0],disclosure:{...events[0].disclosure,companySummary:summary}}]}}));
-  await page.goto('/');await page.getByRole('button',{name:'공모가 보러가기'}).click();await page.getByRole('button',{name:'기업 리포트 보기'}).click();
+  await page.goto('/');await page.getByRole('button',{name:'청약 정보 확인하기'}).click();await page.getByRole('button',{name:'기업 리포트 보기'}).click();
   const chart=page.locator('.financial-chart');
   await expect(chart.getByRole('img')).toBeVisible();
   await expect(chart.locator('.financial-chart-periods button')).toHaveCount(3);
@@ -77,7 +77,7 @@ test('증권사 색상과 이름을 함께 표시하고 복수 주관사와 미�
   await expect(featured.locator('.broker-im')).toHaveText('iM증권');
   await expect(featured.locator('.broker-samsung')).toHaveText('삼성증권');
   await expect(featured.locator('.featured-price')).toContainText('2,000원');
-  await page.getByRole('button', { name: '공모가 보러가기' }).click();
+  await page.getByRole('button', { name: '청약 정보 확인하기' }).click();
   await expect(page.getByRole('dialog').locator('.detail-subtitle .broker-badge')).toHaveCount(2);
   await page.getByRole('button', { name:'닫기', exact:true }).click();
   await expect(page.locator('.broker-neutral').first()).toHaveText('새로운증권');
@@ -107,7 +107,7 @@ test('홈 캘린더 → 상세 → 저장 → 새로고침 → 관심 일정', a
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('공모주 일정');
-  await page.getByRole('button', { name: '공모가 보러가기' }).click();
+  await page.getByRole('button', { name: '청약 정보 확인하기' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('heading', { name: '한빛테크', exact: true })).toBeVisible();
   await expect(dialog).toContainText('10.26 – 10.27');
@@ -134,7 +134,7 @@ test('홈 빠른 저장과 청약 준비 기록을 다시 방문해 확인하고
   await setup(page); await page.goto('/');
   await page.getByRole('button', { name: '가까운 청약 관심 저장', exact: true }).click();
   await expect(page.getByRole('button', { name: /내 관심 일정 한빛테크/ })).toBeVisible();
-  await page.getByRole('button', { name: '공모가 보러가기' }).click();
+  await page.getByRole('button', { name: '청약 정보 확인하기' }).click();
   const checklist = page.getByRole('region', { name: '나의 청약 준비' });
   await checklist.getByRole('checkbox', { name: /계좌와 청약 자격/ }).check();
   await expect(checklist.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
@@ -150,7 +150,7 @@ test('DART 숫자 공모가에 원을 표시하고 중복 안내를 숨겨요', 
   await setup(page); await page.unroute('**/api/schedule');
   await page.route('**/api/schedule', route => route.fulfill({ json: { ...data, events: [{ ...events[0], priceText: '2,000' }] } }));
   await page.goto('/');
-  await page.getByRole('button', { name: '공모가 보러가기' }).click();
+  await page.getByRole('button', { name: '청약 정보 확인하기' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('region', { name: '공모가 정보' })).toContainText('2,000원');
   await expect(dialog.getByRole('heading', { name: '일정', exact: true })).toBeVisible();
@@ -241,7 +241,7 @@ test('확인한 마감시간에 새로고침 없이 청약 마감으로 바뀌�
   await page.clock.fastForward(10000);
   await expect(page.locator('.featured-panel h2')).toHaveText('청약이 마감됐어요');
   await expect(page.locator('.home-day-list')).toContainText('청약 마감');
-  await page.getByRole('button', { name: '공모가 보러가기' }).click();
+  await page.getByRole('button', { name: '청약 정보 확인하기' }).click();
   await expect(page.getByRole('dialog')).toContainText('청약 마감');
   await expect(page.getByRole('dialog').locator('.detail-facts')).toContainText('16:00 · 공시 기준');
   await page.route('**/api/schedule',route=>route.fulfill({json:{...data,events:[first]}}));
@@ -315,7 +315,7 @@ test('주관사 미확인은 누락 안내와 원문 확인 동선을 표시', a
   await page.goto('/');
   await expect(page.locator('.featured-broker')).toContainText('주관사는 공시에서 확인해 주세요');
   await expect(page.getByText(/주관사 확인이 필요한 일정이/)).toHaveCount(0);
-  await page.getByRole('button', { name: '공모가 보러가기' }).click();
+  await page.getByRole('button', { name: '청약 정보 확인하기' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('원본 확인 필요');
   await expect(dialog.getByRole('region', { name: '공모가 정보' })).toContainText('공시 확인 전');
@@ -345,7 +345,7 @@ test('보류한 경쟁률 화면과 수집 요청은 출시 앱에 노출하지 
   await page.goto('/#competition');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('공모주 일정');
   await expect(page.getByRole('link', { name: '청약 비교', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: '공모가 보러가기' }).click();
+  await page.getByRole('button', { name: '청약 정보 확인하기' }).click();
   await expect(page.locator('.competition-snippet')).toHaveCount(0);
   expect(requests).toEqual([]);
 });
@@ -438,7 +438,7 @@ test('기업 리포트는 공모 개요·실적 KPI·핵심 포인트·원문을
   ],unit:'천원',scope:'연결 요약재무정보',receiptNo:events[0].disclosure.receiptNo,sourceUrl:events[0].disclosure.sourceUrl};
   await page.unroute('**/api/schedule');
   await page.route('**/api/schedule',r=>r.fulfill({json:{...data,events:[{...events[0],priceText:'12,000',disclosure:{...events[0].disclosure,companySummary:summary}},events[3]]}}));
-  await page.goto('/');await page.getByRole('button',{name:'공모가 보러가기'}).click();
+  await page.goto('/');await page.getByRole('button',{name:'청약 정보 확인하기'}).click();
   const detail=page.getByRole('dialog');
   // An upcoming subscription has no listing date yet; say when it is fixed instead of 'unknown'.
   await expect(detail.locator('.detail-facts')).toContainText('청약 후 확정돼요');
@@ -512,4 +512,26 @@ test('달력 날짜를 누르는 동안 칸이 움직이지 않아 이어진 일
   expect(pressed!.y).toBe(before!.y); expect(pressed!.y).toBe(neighbour!.y);
   await expect(day).toHaveCSS('transform', 'none');
   await page.mouse.up();
+});
+
+test('홈 대표 청약 버튼은 다음 화면에서 볼 공시 정보를 이름으로 알려줘요', async ({ page }) => {
+  await setup(page); await page.unroute('**/api/schedule');
+  const src = { receiptNo: '20261020000360', sourceUrl: 'https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20261020000360' };
+  const demand = { ratio: 1234.3, participants: 2357, band: { low: 7600, high: 9000 }, aboveUpperShare: 0.9894, committedShare: 0.0614, ...src };
+  const withDemand = { ...events[0], disclosure: { ...events[0].disclosure, demand } };
+  await page.route('**/api/schedule', r => r.fulfill({ json: { ...data, events: [withDemand] } }));
+  await page.goto('/');
+  const featured = page.locator('.featured-panel');
+  await expect(featured.locator('.featured-signal')).toContainText('1,234 : 1');
+  await expect(featured.locator('.featured-signal')).toContainText('상단 이상 99%');
+  await featured.getByRole('button', { name: '수요예측 결과 확인하기' }).click();
+  await expect(page.getByRole('dialog').getByRole('region', { name: '기관 수요예측' })).toBeVisible();
+  await page.unroute('**/api/schedule');
+  await page.route('**/api/schedule', r => r.fulfill({ json: { ...data, events: [{ ...withDemand, disclosure: { ...withDemand.disclosure, subscriptionClose: { time: '16:00', broker: withDemand.broker, receiptNo: withDemand.disclosure.receiptNo, sourceUrl: withDemand.disclosure.sourceUrl }, subscriptionResult: { ratio: 1410.88, applicants: 237353, equalSharesPerApplicant: 1.32, committedShare: 0.73, ...src } } }] } }));
+  await page.goto('/');
+  // Before the verified close the result label must not appear, even if a result were present.
+  await expect(page.locator('.featured-panel').getByRole('button', { name: '수요예측 결과 확인하기' })).toBeVisible();
+  await page.clock.setFixedTime(new Date('2026-10-27T08:00:00Z'));
+  await page.reload();
+  await expect(page.locator('.featured-panel').getByRole('button', { name: '청약 결과 확인하기' })).toBeVisible();
 });
