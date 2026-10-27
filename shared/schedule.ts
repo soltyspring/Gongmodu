@@ -3,6 +3,9 @@ export interface DateEvidence {
   date: string; quote: string; receiptNo: string | null; sourceUrl: string;
   basis: 'explicit' | 'payment-reference' | 'broker-announcement';
 }
+export interface SubscriptionClose {
+  time: string; broker: string; receiptNo: string; sourceUrl: string;
+}
 export interface BrokerTerms {
   broker: string; allocatedShares: number | null; equalShares: number | null;
   marginRate: number | null; minShares: number | null; limitShares: number | null;
@@ -21,6 +24,7 @@ export interface DartDisclosure {
   brokerSource?: 'summary' | 'document' | 'unconfirmed';
   ipoEvidence?: { receiptNo: string; sourceUrl: string };
   refund?: DateEvidence | null; listing?: DateEvidence | null;
+  subscriptionClose?: SubscriptionClose | null;
   terms?: OfferingTerms;
 }
 export interface ScheduleEvent {
@@ -82,6 +86,18 @@ export function statusLabel(event: ScheduleEvent, today: string) {
   if (includesDate(event, today)) return lastDay(event) === today ? '오늘 마감' : '진행 중';
   const diff = dayDiff(today, event.start);
   return diff === 1 ? '내일' : `D-${diff}`;
+}
+/** Only a verified source-bound deadline can end a subscription before its exclusive end date. */
+export function verifiedCloseTime(event: ScheduleEvent): SubscriptionClose | null {
+  const evidence = event.disclosure?.subscriptionClose;
+  if (event.kind !== 'subscription' || !evidence || !event.disclosure || !/^\d{2}:\d{2}$/.test(evidence.time)) return null;
+  const [hour, minute] = evidence.time.split(':').map(Number);
+  if (hour > 23 || minute > 59 || evidence.receiptNo !== event.disclosure.receiptNo || evidence.sourceUrl !== event.disclosure.sourceUrl || evidence.broker !== event.broker) return null;
+  return evidence;
+}
+export function isSubscriptionClosed(event: ScheduleEvent, now = Date.now()): boolean {
+  const evidence = verifiedCloseTime(event);
+  return !!evidence && now >= Date.parse(`${lastDay(event)}T${evidence.time}:00+09:00`);
 }
 /** Assign stable lanes to multi-day events, including across week boundaries. */
 export function assignLanes(events: ScheduleEvent[]) {

@@ -1,7 +1,7 @@
 import { addDays, dateKey, type ScheduleResponse, type ScheduleEvent } from '../../shared/schedule.ts';
 import { createDartClient, DartError, type DartDocument } from './client.ts';
 import { documentGroups, latestOfferings, normalizeOffering, originalDate, parseDartDates } from './normalize.ts';
-import { brokerKey, disclosedDates, fullOffering, offeringScope, offeringTerms, type DetailSource } from './details.ts';
+import { brokerKey, disclosedDates, disclosedSubscriptionClose, fullOffering, offeringScope, offeringTerms, type DetailSource } from './details.ts';
 
 export const DART_SOURCE = { name: 'DART 증권신고서', url: 'https://dart.fss.or.kr/dsac008/main.do' };
 export async function collectDartSchedule(options: { key: string; fetcher?: typeof fetch; now?: () => number; lookbackDays?: number; delayMs?: number; progress?: (done: number, total: number) => void }): Promise<ScheduleResponse> {
@@ -53,6 +53,7 @@ export async function collectDartSchedule(options: { key: string; fetcher?: type
       for(const event of result.events) {
         const disclosure=event.disclosure!;
         const latestSource:DetailSource={document,receiptNo:report.rcept_no};
+        disclosure.subscriptionClose = disclosedSubscriptionClose(latestSource, event);
         let baseSource=verifiedBase ?? latestSource;
         // Some final-price filings contain only changed sections. Find the latest full
         // statement in the SAME original-filing lineage, rather than treating it as absent.

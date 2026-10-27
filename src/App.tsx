@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode, type ComponentProps } from 'react';
 import { Button as TDSButton, ListRow } from '@toss/tds-mobile';
 import { Bookmark, CalendarDays, Check, ChevronLeft, ChevronRight, CircleHelp, ExternalLink, Home, Info, RefreshCw, Search, X } from 'lucide-react';
-import { assignLanes, calendarCells, changeMonth, dateKey, dateRange, dayDiff, includesDate, isScheduleEvent, kindLabels, lastDay, shortDate, statusLabel, type EventKind, type ScheduleEvent, type ScheduleResponse } from '../shared/schedule';
+import { assignLanes, calendarCells, changeMonth, dateKey, dateRange, dayDiff, includesDate, isScheduleEvent, isSubscriptionClosed, kindLabels, lastDay, shortDate, statusLabel, verifiedCloseTime, type EventKind, type ScheduleEvent, type ScheduleResponse } from '../shared/schedule';
 import { closeNative, connectNative, isNativeToss, openExternal } from './platform';
 import { PreparationChecklist } from './PreparationChecklist';
 
@@ -98,6 +98,7 @@ export default function App() {
   const route = hash.split('/');
   const view: View = ['home', 'calendar', 'saved'].includes(route[0]) ? route[0] as View : 'home';
   const [today, setToday] = useState(dateKey());
+  const [nowMinute, setNowMinute] = useState(() => Math.floor(Date.now() / 60000));
   const [data, setData] = useState<ScheduleResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -125,7 +126,7 @@ export default function App() {
     } catch { setError('일정을 불러오지 못했어요. 연결을 확인하고 다시 시도해 주세요.'); }
     finally { setLoading(false); }
   }
-  useEffect(() => { void refresh(); const timer = setInterval(() => setToday(dateKey()), 60000); return () => clearInterval(timer); }, []);
+  useEffect(() => { void refresh(); const tick = () => { setToday(dateKey()); setNowMinute(Math.floor(Date.now() / 60000)); }; const timer = setInterval(tick, 1000); document.addEventListener('visibilitychange', tick); return () => { clearInterval(timer); document.removeEventListener('visibilitychange', tick); }; }, []);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(''), 3500); return () => clearTimeout(timer); }, [toast]);
   useEffect(() => { window.scrollTo(0, 0); }, [view]);
   const events = data?.events ?? [];
@@ -138,11 +139,15 @@ export default function App() {
   const upcoming = remaining.filter(e => e.start > today);
   const nextSubscriptions = remaining.filter(e => e.kind === 'subscription').sort((a, b) => {
     const aActive = includesDate(a, today), bActive = includesDate(b, today);
+    const aClosed = isSubscriptionClosed(a, nowMinute * 60000), bClosed = isSubscriptionClosed(b, nowMinute * 60000);
+    if (aActive && bActive && aClosed !== bClosed) return aClosed ? 1 : -1;
     if (aActive !== bActive) return aActive ? -1 : 1;
     return (aActive ? a.end.localeCompare(b.end) : a.start.localeCompare(b.start)) || a.company.localeCompare(b.company, 'ko');
   });
   const featured = nextSubscriptions[0];
+  const featuredClose = featured ? verifiedCloseTime(featured) : null;
   const featuredHeading = !featured ? '청약 일정을 확인해요'
+    : isSubscriptionClosed(featured, nowMinute * 60000) ? '청약이 마감됐어요'
     : includesDate(featured, today) ? (lastDay(featured) === today ? '오늘 마감 예정이에요' : '지금 청약을 진행하고 있어요')
     : dayDiff(today, featured.start) === 1 ? '내일 청약이 시작돼요' : '곧 시작하는 청약이에요';
   const featuredRefund = featured?.disclosure?.refund?.date;
@@ -172,8 +177,9 @@ export default function App() {
     try { localStorage.setItem(storageKey, JSON.stringify(next)); setSaved(next); setToast(next[event.id] ? '관심 일정에 저장했어요' : '관심 일정을 해제했어요'); }
     catch { setToast('기기 저장 공간을 확인한 뒤 다시 시도해 주세요'); }
   }
+  const eventStatus = (event: ScheduleEvent) => isSubscriptionClosed(event, nowMinute * 60000) ? '청약 마감' : statusLabel(event, today);
   const row = (event: ScheduleEvent, date = true) => <div className="event-row" key={event.id}>
-    <button className="event-open" onClick={() => open(event)}><span className={`event-symbol ${event.kind}`} aria-hidden="true">{kindLabels[event.kind].slice(0, 1)}</span><span className="event-copy"><span className="event-company">{event.company}</span><span className="event-meta">{kindLabels[event.kind]}{event.broker ? ` · ${event.broker}` : ' · 주관사 원본 확인'}{!event.disclosure ? ' · 이전 출처' : ''}</span>{date && <span className="event-date">{dateRange(event)}</span>}</span><span className={`event-status ${includesDate(event, today) ? 'in-progress' : ''}`}>{statusLabel(event, today)}</span><ChevronRight className="row-chevron" size={18} /></button>
+    <button className="event-open" onClick={() => open(event)}><span className={`event-symbol ${event.kind}`} aria-hidden="true">{kindLabels[event.kind].slice(0, 1)}</span><span className="event-copy"><span className="event-company">{event.company}</span><span className="event-meta">{kindLabels[event.kind]}{event.broker ? ` · ${event.broker}` : ' · 주관사 원본 확인'}{!event.disclosure ? ' · 이전 출처' : ''}</span>{date && <span className="event-date">{dateRange(event)}</span>}{verifiedCloseTime(event) && <span className="event-close">{verifiedCloseTime(event)!.time} 마감</span>}</span><span className={`event-status ${isSubscriptionClosed(event, nowMinute * 60000) ? 'is-closed' : includesDate(event, today) ? 'in-progress' : ''}`}>{eventStatus(event)}</span><ChevronRight className="row-chevron" size={18} /></button>
     <button className={`save-button ${saved[event.id] ? 'is-saved' : ''}`} aria-label={`${event.company} ${kindLabels[event.kind]} 관심 ${saved[event.id] ? '해제' : '저장'}`} aria-pressed={!!saved[event.id]} onClick={() => toggleSave(event)}><Bookmark size={20} fill={saved[event.id] ? 'currentColor' : 'none'} /></button>
   </div>;
 
@@ -194,6 +200,7 @@ export default function App() {
           <section className="featured-panel panel"><div className="section-heading"><h2>{featuredHeading}</h2>{featured && <div className="featured-controls"><button className={`save-button ${saved[featured.id] ? 'is-saved' : ''}`} aria-label={`가까운 청약 ${saved[featured.id] ? '관심 해제' : '관심 저장'}`} aria-pressed={!!saved[featured.id]} onClick={() => toggleSave(featured)}><Bookmark size={21} fill={saved[featured.id] ? 'currentColor' : 'none'} /></button></div>}</div>{featured ? <>
             <button className="featured-company" onClick={() => open(featured)}>{featured.company}<ChevronRight size={20} /></button><p className="featured-broker">{featured.broker || '주관사는 공시에서 확인해 주세요'}</p>
             <div className="featured-summary"><div className="featured-period"><span>청약일</span><strong>{dateRange(featured)}</strong></div><div className="featured-refund"><span>환불일</span><strong>{featuredRefund ? shortDate(featuredRefund) : '공시 확인 전'}</strong></div></div>
+            <p className="closing-time">{featuredClose ? `${featuredClose.time} 마감 · 공시 기준` : '마감시간은 주관사에서 확인해 주세요'}</p>
             <Button size="large" display="full" onClick={() => open(featured)}>공모가 보러가기</Button>
           </> : <Empty title="새로운 청약을 기다리고 있어요" text="이전 기록은 전체 일정에서 확인해 보세요." />}</section>
         <section className="panel calendar-panel home-calendar" aria-label="홈 공모주 캘린더">
@@ -214,10 +221,11 @@ export default function App() {
     </main>
     <nav className="mobile-nav" aria-label="하단 메뉴">{tabs.map(({ id, label, icon: Icon }) => <a key={id} href={`#${id}`} className={view === id ? 'active' : ''} aria-current={view === id ? 'page' : undefined}><Icon size={21} strokeWidth={view === id ? 2.3 : 1.7} /><span>{label}</span></a>)}</nav>
     {route[1] === 'event' && <Sheet title={active?.company || '일정 상세'} onClose={closeSheet}>{active ? <>
-      <div className="detail-eyebrow"><span className={`kind-label ${active.kind}`}>{kindLabels[active.kind]}</span><span>{statusLabel(active, today)}</span></div><h2 className="detail-title">{active.company}</h2><p className="detail-subtitle">{active.broker || '주관사는 원본 일정을 확인해 주세요'}</p>
+      <div className="detail-eyebrow"><span className={`kind-label ${active.kind}`}>{kindLabels[active.kind]}</span><span>{eventStatus(active)}</span></div><h2 className="detail-title">{active.company}</h2><p className="detail-subtitle">{active.broker || '주관사는 원본 일정을 확인해 주세요'}</p>
       {activeDateEvidence?.basis==='broker-announcement' && <p className="small-note">이 날짜의 출처는 증권사 공개 안내예요. 예정 일정은 변경될 수 있어요.</p>}
       {!events.some(e => e.id === active.id) && <div className="notice"><Info size={17} />기기에 저장한 일정이에요. 최신 일정은 원본을 확인해 주세요.</div>}
       <section className="detail-price" aria-label="공모가 정보"><h3>공모가 정보</h3><strong>{displayPrice(active)}</strong></section>
+      {active.kind === 'subscription' && <p className="closing-time detail-closing-time">{verifiedCloseTime(active) ? `${verifiedCloseTime(active)!.time} 마감 · 공시 기준` : '마감시간은 주관사에서 확인해 주세요'}</p>}
       <div className="detail-section"><h3>일정</h3><div className="detail-timeline">{(['subscription', 'refund', 'listing'] as const).map(kind => { const event = related.find(e => e.kind === kind) ?? (active.kind === kind ? active : undefined); return <div key={kind} className={event ? 'known' : ''}><i>{event ? <Check size={12} /> : null}</i><span>{kind==='listing'?'상장 예정':kindLabels[kind]}</span><strong>{event ? dateRange(event) : '공시 확인 전'}</strong></div>; })}</div></div>
       <div className="detail-section"><h3>청약 정보</h3><div className="detail-facts">
         <ListRow as="div" border="none" horizontalPadding="small" contents={<ListRow.Texts type="2RowTypeA" top="주관사" bottom={active.broker || '원본 확인 필요'} />} />

@@ -1,4 +1,4 @@
-import type { BrokerTerms, DateEvidence, OfferingTerms } from '../../shared/schedule.ts';
+import { lastDay, type BrokerTerms, type DateEvidence, type OfferingTerms, type ScheduleEvent, type SubscriptionClose } from '../../shared/schedule.ts';
 import type { DartDocument } from './client.ts';
 import { parseDartDates } from './normalize.ts';
 
@@ -17,6 +17,20 @@ export function fullOffering(document: DartDocument) {
   return /청약증거금의\s*대체|청약증거금\s*대체|배정결과의\s*통지/.test(offeringScope(document).text.replace(/\n/g, ' '));
 }
 export interface DetailSource { document: DartDocument; receiptNo: string }
+
+/** Strictly match a general-investor date and time range in this exact filing. */
+export function disclosedSubscriptionClose(source: DetailSource, event: ScheduleEvent): SubscriptionClose | null {
+  if (!event.broker || event.broker.split(/[,，]/).length !== 1 || !event.disclosure || source.receiptNo !== event.disclosure.receiptNo) return null;
+  const text = offeringScope(source.document).text.replace(/\s+/g, ' ');
+  const pattern = /일반청약자\s*청약일\s*[:：]\s*(20\d{2})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*[~～∼]\s*(?:(20\d{2})\s*년\s*)?(?:(\d{1,2})\s*월\s*)?(\d{1,2})\s*일\s*(?:\([^)]{0,20}?\s*)?(\d{1,2})\s*[:：]\s*(\d{2})\s*(?:부터)?\s*[~～∼-]\s*(\d{1,2})\s*[:：]\s*(\d{2})\s*(?:까지)?/g;
+  const date = (y: string, m: string, d: string) => `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  const found = [...text.matchAll(pattern)].map(m => ({ start:date(m[1], m[2], m[3]), last:date(m[4] || m[1], m[5] || m[2], m[6]), startHour:Number(m[7]), startMinute:Number(m[8]), endHour:Number(m[9]), endMinute:Number(m[10]) }));
+  if (!found.length || found.some(v => v.start !== event.start || v.last !== lastDay(event) || v.startHour > 23 || v.endHour > 23 || v.startMinute > 59 || v.endMinute > 59 || v.startHour * 60 + v.startMinute >= v.endHour * 60 + v.endMinute)) return null;
+  const times = [...new Set(found.map(v => `${String(v.endHour).padStart(2,'0')}:${String(v.endMinute).padStart(2,'0')}`))];
+  // A separate channel-specific deadline would make a single issuer-wide time misleading.
+  if (times.length !== 1 || /(?:온라인|영업점|지점|채널)\s*(?:별|마다)\s*(?:청약)?\s*(?:시간|마감)/.test(text) || /(?:온라인|영업점|지점|HTS|MTS|ARS)[^。.;]{0,40}\d{1,2}\s*[:：]\s*\d{2}\s*(?:부터)?\s*[~～∼-]\s*\d{1,2}\s*[:：]\s*\d{2}/i.test(text)) return null;
+  return { time: times[0], broker:event.broker, receiptNo:source.receiptNo, sourceUrl:event.disclosure.sourceUrl };
+}
 export function disclosedDates(source: DetailSource, paymentText: string | null) {
   const {text,tables} = offeringScope(source.document);
   const flattened = text.replace(/\s+/g,' ');

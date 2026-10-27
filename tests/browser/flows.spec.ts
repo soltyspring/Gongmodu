@@ -128,6 +128,28 @@ test('홈 문구가 청약 시작과 마감 날짜에 맞게 바뀌어요', asyn
   await expect(heading).toHaveText('곧 시작하는 청약이에요');
 });
 
+test('확인한 마감시간에 새로고침 없이 청약 마감으로 바뀌고 미확인은 추정하지 않아요', async ({ page }) => {
+  await setup(page); await page.unroute('**/api/schedule');
+  await page.clock.setSystemTime(new Date('2026-10-27T06:59:50Z'));
+  const first = events[0];
+  const verified = {...first, disclosure:{...first.disclosure,subscriptionClose:{time:'16:00',broker:first.broker,receiptNo:first.disclosure.receiptNo,sourceUrl:first.disclosure.sourceUrl}}};
+  await page.route('**/api/schedule',route=>route.fulfill({json:{...data,events:[verified]}}));
+  await page.goto('/');
+  await expect(page.locator('.featured-panel')).toContainText('16:00 마감 · 공시 기준');
+  await expect(page.locator('.featured-panel h2')).toHaveText('오늘 마감 예정이에요');
+  await page.clock.fastForward(10000);
+  await expect(page.locator('.featured-panel h2')).toHaveText('청약이 마감됐어요');
+  await expect(page.locator('.home-day-list')).toContainText('청약 마감');
+  await page.getByRole('button', { name: '공모가 보러가기' }).click();
+  await expect(page.getByRole('dialog')).toContainText('청약 마감');
+  await expect(page.getByRole('dialog')).toContainText('16:00 마감 · 공시 기준');
+  await page.route('**/api/schedule',route=>route.fulfill({json:{...data,events:[first]}}));
+  await page.reload();
+  await expect(page.getByRole('dialog')).toContainText('마감시간은 주관사에서 확인해 주세요');
+  await expect(page.getByRole('dialog')).not.toContainText('16:00 마감');
+  await expect(page.getByRole('dialog')).not.toContainText('청약 마감');
+});
+
 test('세 탭 제목의 위치와 글꼴을 통일하고 확인 시각은 표시하지 않아요', async ({ page }) => {
   await setup(page);
   const titles = [];
