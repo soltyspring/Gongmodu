@@ -41,12 +41,28 @@ strong { font-weight: 650; }
 .company-intro { font-size:18px; font-weight:650; margin-top:8px; }
 .company-info > section { margin-top:24px; }
 .company-info section > p:not(.small-note) { color:#4b596a; line-height:1.8; font-size:15px; margin-top:10px; word-break:keep-all; }
-.company-period { border-top:1px solid var(--border); padding:14px 0; }
-.company-period h4 { margin:0 0 8px; font-size:14px; font-weight:650; }
-.company-period dl { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-.company-period dl > div { display:flex; flex-direction:column; align-items:flex-start; gap:4px; min-width:0; }
-.company-period dt { font-size:13px; color:var(--muted); }
-.company-period dd { font-size:15px; font-weight:650; font-variant-numeric:tabular-nums; text-align:left; overflow-wrap:anywhere; }
+.financial-chart { margin-top:16px; }
+.financial-chart-legend { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; font-size:13px; color:var(--muted); }
+.financial-chart-legend > span { display:inline-flex; align-items:center; gap:5px; }
+.financial-chart-legend i { width:8px; height:8px; display:inline-block; }
+.financial-chart-legend .financial-chart-unit { margin-left:auto; }
+.financial-chart-scroll { overflow-x:auto; margin-top:12px; }
+.financial-chart-plot { width:100%; height:auto; display:block; }
+.financial-chart-plot text { fill:var(--muted); font:13px var(--font); font-variant-numeric:tabular-nums; }
+.financial-chart-periods { display:grid; padding:0 8px 0 48px; gap:0; }
+.financial-chart-periods button { min-height:48px; padding:5px 2px; border-radius:8px; font-size:14px; color:var(--muted); line-height:1.4; }
+.financial-chart-periods button[aria-pressed=true] { background:var(--active); color:var(--text); font-weight:650; }
+.financial-chart-periods button small { display:block; font-size:12px; font-weight:400; }
+.financial-chart-detail { margin-top:16px; padding:16px; background:var(--raised); border-radius:12px; }
+.financial-chart-detail > p { font-size:13px; color:var(--muted); overflow-wrap:anywhere; }
+.financial-chart-detail dl { display:flex; gap:12px; margin:12px 0 0; }
+.financial-chart-detail dl > div { display:block; flex:1; min-width:0; padding:0; }
+.financial-chart-detail dt { font-size:13px; color:var(--muted); margin-bottom:4px; }
+.financial-chart-detail dd { font-size:18px; font-weight:650; font-variant-numeric:tabular-nums; margin:0; text-align:left; overflow-wrap:anywhere; }
+.financial-chart-detail dd small { display:block; font-size:12px; font-weight:400; margin-top:2px; color:var(--muted); }
+.financial-chart-detail dd.is-loss { color:#bc3545; }
+.financial-chart-detail .financial-accounting { margin-top:10px; font-size:12px; }
+.financial-chart-note { margin-top:12px; }
 /* Keep the native TDS press feedback flat; no decorative gradient layer. */
 .app-shell button div { background-image: none !important; }
 :root[data-native] .mobile-header { display: none; }
@@ -665,4 +681,106 @@ button:active:not(:disabled) { transform:translateY(1px); }
   .view-calendar .calendar-day { min-height:94px; gap:4px; }
   .view-calendar .filter-buttons button { padding:0 9px; }
   .view-calendar .segmented button { padding:0 8px; }
+}
+
+/* Toss tone: TDS grey scale, ListRow typography (17/15), 16px-radius CTAs and borderless fills.
+   The emerald brand colour stays the only accent; no new shadows except the floating tab bar. */
+:root {
+  --ground:#f2f4f6; --raised:#f2f4f6; --active:#e5e8eb;
+  --text:#191f28; --muted:#4e5968; --faint:#8b95a1; --subtle:#6b7684; --border:#e5e8eb; --rule:#f2f4f6;
+  --radius-card:20px;
+  letter-spacing:-.02em;
+}
+.app-action { min-height:56px; border-radius:16px; font-size:17px; font-weight:600; }
+.app-action.weak { background:#e6f4ef; color:var(--accent-dark); }
+.app-action:active { filter:none; opacity:.85; }
+/* Page and section headings follow the TDS Top/ListHeader rhythm. */
+.app-shell .main-content .page-title h1 { font-size:26px; font-weight:700; }
+.upcoming-section > .section-heading h2,.selected-day-panel h2 { font-size:20px; font-weight:700; }
+.featured-panel .section-heading h2 { font-size:15px; font-weight:600; color:var(--muted); }
+.subscription-first .featured-company { font-size:26px; font-weight:700; }
+.featured-period strong { font-weight:700; }
+.featured-refund strong { font-weight:600; }
+.closing-time { color:var(--subtle); font-size:14px; }
+/* Event rows read like ListRow: 17px title, 15px description. */
+.app-shell .event-company { font-size:17px; font-weight:600; }
+.event-meta,.event-price { font-size:14px; color:var(--muted); }
+.app-shell .event-date { font-size:15px; font-weight:500; color:var(--muted); }
+.event-status { font-size:14px; font-weight:600; color:var(--subtle); }
+.event-status.in-progress { color:var(--accent); }
+.event-row + .event-row { border-top:0; }
+.event-list,.saved-list,.selected-list { padding:4px 20px; }
+.save-button { color:var(--subtle); border-radius:12px; }
+/* Badges: weak fills, 6px radius, like TDS Badge small. */
+.kind-label,.broker-badge { border-radius:6px; font-size:13px; font-weight:600; padding:3px 8px; }
+/* Controls: filled, borderless; white on the grey page. */
+.search-field,.view-calendar .search-field { border:0; border-radius:14px; background:var(--surface); }
+.filter-buttons button { border:0; background:var(--surface); color:var(--muted); border-radius:20px; font-weight:500; }
+.filter-buttons button.active { background:var(--text); color:var(--surface); }
+.segmented { background:var(--active); border-radius:12px; }
+.segmented button { border-radius:9px; }
+.segmented button.selected { font-weight:600; }
+.text-button { color:var(--muted); font-size:14px; }
+.notice { background:var(--surface); color:var(--text); border-radius:16px; font-size:14px; }
+.notice button { color:var(--accent-dark); font-weight:600; text-decoration:none; }
+.saved-return { background:var(--surface); }
+.home-day-heading { border-top:1px solid var(--border); }
+.home-day-heading h3 { font-size:16px; font-weight:700; }
+/* Desktop sidebar: brand and nav only. */
+.nav-link { font-size:16px; border-radius:12px; }
+.nav-link.active { background:var(--raised); font-weight:600; }
+.help-link { font-size:14px; color:var(--muted); }
+/* Floating tab bar (Apps in Toss: 2–5 tabs, floating form). */
+@media (max-width:900px) {
+  .mobile-nav { border:0; border-radius:28px; padding:6px 10px; box-shadow:0 2px 16px rgba(0,23,51,.08); }
+  .mobile-nav a { color:var(--subtle); font-size:11px; gap:3px; height:52px; }
+  .mobile-nav a.active { color:var(--text); }
+}
+/* Bottom sheet: title first, one close action, ListRow facts. */
+.sheet { border-radius:24px; }
+.sheet-top { justify-content:flex-end; margin:0 -12px 0 0; }
+.sheet-top .icon-button { color:var(--subtle); }
+.app-shell .detail-title { font-size:24px; font-weight:700; margin-top:8px; }
+.detail-eyebrow { gap:8px; justify-content:flex-start; font-size:14px; font-weight:500; }
+.detail-subtitle { margin-top:10px; }
+.detail-price { margin-top:24px; padding:0; background:none; border-radius:0; }
+.detail-price h3 { color:var(--muted); font-size:15px; font-weight:500; }
+.detail-price strong { margin-top:4px; font-size:28px; font-weight:700; letter-spacing:-.03em; }
+.detail-section h3 { font-size:17px; font-weight:700; margin-bottom:4px; }
+.detail-facts { margin:28px 0 8px; padding-top:20px; border-top:1px solid var(--border); }
+.detail-facts-list { margin:0 -16px; }
+.detail-facts-list .fact-known,.detail-facts-fallback .fact-known { color:var(--text); font-weight:600; font-variant-numeric:tabular-nums; }
+.detail-facts-list .fact-unknown,.detail-facts-fallback .fact-unknown { color:var(--subtle); font-weight:400; }
+.detail-facts-fallback > div { padding:12px 0; font-size:17px; }
+.detail-facts-fallback dt { color:var(--muted); }
+.detail-closing-time { margin:4px 0 0; }
+.preparation-section { border-top:1px solid var(--border); }
+.preparation-section h3 { font-size:17px; font-weight:700; }
+.preparation-progress { margin:14px 0 4px; }
+.preparation-step strong { font-size:16px; }
+.preparation-step > span > span { font-size:14px; }
+.detail-actions { border-top:0; }
+.detail-source { font-size:15px; color:var(--muted); }
+.company-intro { font-size:15px; font-weight:500; color:var(--muted); margin-top:4px; }
+.company-info section h3 { font-size:17px; font-weight:700; }
+.company-info section > p:not(.small-note) { color:var(--muted); font-size:16px; line-height:1.7; }
+.small-note { color:var(--subtle); }
+.guide-tabs button { border-radius:20px; }
+.guide-steps p { line-height:1.7; }
+/* Footer: one disclaimer paragraph and policy links. */
+.page-footer { border-top:0; padding-top:8px; }
+.page-footer .footer-notice { margin-top:0; padding-top:0; border-top:0; }
+.page-footer .footer-notice p { color:var(--muted); font-size:13px; }
+.footer-policies button { color:var(--muted); text-decoration:none; }
+.toast { background:#333d4b; border-radius:16px; font-size:15px; }
+@media (max-width:600px) {
+  .app-shell .main-content .page-title h1 { font-size:24px; }
+  .subscription-first .featured-company { font-size:24px; }
+  .upcoming-section > .section-heading h2 { font-size:20px; }
+  .event-list,.saved-list,.selected-list { padding:0 16px; }
+  .event-meta { font-size:14px; }
+  .search-field input,.view-calendar .search-field input { font-size:15px; }
+  .app-shell .detail-title { font-size:24px; }
+  .detail-price strong { font-size:26px; }
+  .toast { font-size:14px; }
 }
