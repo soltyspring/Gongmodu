@@ -22,11 +22,12 @@ test('홈 캘린더 → 상세 → 저장 → 새로고침 → 관심 일정', a
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('공모주 일정');
-  await page.getByRole('button', { name: '청약 일정 자세히 보기' }).click();
+  await page.getByRole('button', { name: '공모가 보러가기' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('heading', { name: '한빛테크', exact: true })).toBeVisible();
   await expect(dialog).toContainText('10.26 – 10.27');
-  await expect(dialog).toContainText('10,000원~12,000원');
+  await expect(dialog.getByRole('region', { name: '공모가 정보' })).toContainText('10,000원~12,000원');
+  await expect(dialog.getByRole('region', { name: '공모가 정보' })).toContainText('확정 여부와 단위는 공시에서 확인');
   await dialog.getByRole('button', { name: '한빛테크 상세 관심 저장' }).click();
   await dialog.getByRole('button', { name: '닫기', exact: true }).click();
   await page.reload();
@@ -42,7 +43,7 @@ test('홈 빠른 저장과 청약 준비 기록을 다시 방문해 확인하고
   await setup(page); await page.goto('/');
   await page.getByRole('button', { name: '가까운 청약 관심 저장', exact: true }).click();
   await expect(page.getByRole('button', { name: /내 관심 일정 한빛테크/ })).toBeVisible();
-  await page.getByRole('button', { name: '청약 일정 자세히 보기' }).click();
+  await page.getByRole('button', { name: '공모가 보러가기' }).click();
   const checklist = page.getByRole('region', { name: '나의 청약 준비' });
   await checklist.getByRole('checkbox', { name: /계좌와 청약 자격/ }).check();
   await expect(checklist.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
@@ -58,7 +59,7 @@ test('월간 달력, exclusive 종료, 검색, 종류 필터, 스팩 제외, 월
   await setup(page); await page.goto('/#calendar');
   await expect(page.locator('.page-topline')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: '전체 일정', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: '일정 새로고침' })).toHaveCount(0);
+  await expect(page.locator('.page-title').getByRole('button', { name: '일정 새로고침' })).toHaveCount(0);
   await page.getByRole('button', { name: '2026-10-26, 일정 2개', exact: true }).click();
   await expect(page.locator('.selected-list .event-row')).toHaveCount(2);
   await page.getByRole('button', { name: '2026-10-28, 일정 2개', exact: true }).click();
@@ -93,6 +94,24 @@ test('홈 문구가 청약 시작과 마감 날짜에 맞게 바뀌어요', asyn
   await page.clock.setFixedTime(new Date('2026-10-29T03:00:00Z'));
   await page.reload();
   await expect(heading).toHaveText('곧 시작하는 청약이에요');
+});
+
+test('세 탭 제목의 위치와 글꼴을 통일하고 확인 시각은 표시하지 않아요', async ({ page }) => {
+  await setup(page);
+  const titles = [];
+  for (const [route, name] of [['home', '공모주 일정'], ['calendar', '전체 일정'], ['saved', '관심 일정']] as const) {
+    await page.goto(`/#${route}`);
+    const title = page.getByRole('heading', { level: 1 });
+    await expect(title).toHaveText(name);
+    await expect(page.locator('.page-topline')).toHaveCount(0);
+    await expect(page.getByText(/10\. 25\. 12:00 확인/)).toHaveCount(0);
+    titles.push(await title.evaluate(element => {
+      const rect = element.getBoundingClientRect(), style = getComputedStyle(element);
+      return { x: rect.x, y: rect.y, size: style.fontSize, weight: style.fontWeight, lineHeight: style.lineHeight };
+    }));
+  }
+  expect(titles[1]).toEqual(titles[0]);
+  expect(titles[2]).toEqual(titles[0]);
 });
 
 test('직접 상세 진입, Escape 닫기, 브라우저 뒤로 가기, 안내', async ({ page }) => {
@@ -131,7 +150,7 @@ test('조회 장애는 재시도하고 오래된 정상 데이터는 경고 없�
   await page.getByRole('button', { name: '일정 새로고침' }).click();
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(page.locator('.featured-company')).toContainText('한빛테크');
-  await expect(page.getByRole('button', {name:'일정 새로고침'})).toContainText('10. 25.');
+  await expect(page.getByRole('button', {name:'일정 새로고침'})).toHaveText('일정 새로고침');
 });
 
 test('주관사 미확인은 누락 안내와 원문 확인 동선을 표시', async ({ page }) => {
@@ -141,10 +160,10 @@ test('주관사 미확인은 누락 안내와 원문 확인 동선을 표시', a
   await page.route('**/api/schedule', route => route.fulfill({ json: { ...data, events: [incomplete] } }));
   await page.goto('/');
   await expect(page.getByRole('status')).toContainText('주관사 확인이 필요한 일정이 1개');
-  await page.getByRole('button', { name: '청약 일정 자세히 보기' }).click();
+  await page.getByRole('button', { name: '공모가 보러가기' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('주관사를 자동으로 확인하지 못했어요');
-  await expect(dialog).toContainText('공시 원문 확인 필요');
+  await expect(dialog.getByRole('region', { name: '공모가 정보' })).toContainText('아직 확인되지 않았어요');
   await dialog.getByText('공시와 날짜 확인 근거', { exact: true }).click();
   await dialog.getByText('원본 공시 정보 보기', { exact: true }).click();
   await expect(dialog.getByRole('link', { name: 'DART 증권신고서 원문 열기' })).toHaveAttribute('href', incomplete.disclosure.sourceUrl);
@@ -172,7 +191,7 @@ test('보류한 경쟁률 화면과 수집 요청은 출시 앱에 노출하지 
   await page.goto('/#competition');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('공모주 일정');
   await expect(page.getByRole('link', { name: '청약 비교', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: '청약 일정 자세히 보기' }).click();
+  await page.getByRole('button', { name: '공모가 보러가기' }).click();
   await expect(page.locator('.competition-snippet')).toHaveCount(0);
   expect(requests).toEqual([]);
 });

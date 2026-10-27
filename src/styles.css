@@ -329,7 +329,6 @@ dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
   .page-title p { font-size: 13px; margin-top: 8px; }
   .view-home .page-title { margin: 2px 0 12px; }
   .view-home .page-title h1 { font-size: 22px; }
-  .main-content.view-home { padding-top: 8px; }
   .view-home .page-topline,.view-home .refresh-button { min-height: 28px; }
   .subscription-first .home-calendar { margin: 0 -4px; padding: 12px 8px 8px; }
   .subscription-first .home-day-heading,.subscription-first .home-day-list { padding-left: 8px; padding-right: 8px; }
@@ -411,6 +410,19 @@ dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
   .guide-tabs button { padding: 7px 9px; font-size: 11px; }
   .guide-steps { gap: 22px; }
   .toast { padding: 14px 18px; font-size: 12px; }
+}
+
+/* Three tabs share one title frame, including space for the calendar's Today action. */
+.app-shell .main-content .page-title { margin:0 0 20px; min-height:44px; align-items:center; }
+.app-shell .main-content .page-title h1 { font-size:24px; font-weight:700; line-height:1.3; letter-spacing:-.045em; }
+.page-footer > button { min-height:44px; font-size:13px; }
+.detail-price { margin-top:24px; padding:20px; background:var(--accent-pale); border-radius:14px; }
+.detail-price h3 { color:var(--accent-dark); font-size:14px; font-weight:600; }
+.detail-price strong { display:block; margin-top:6px; font-size:23px; line-height:1.35; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.detail-price p { margin-top:8px; color:var(--muted); font-size:13px; line-height:1.6; }
+@media (max-width:600px) {
+  .app-shell .main-content .page-title { margin:0 0 16px; }
+  .app-shell .main-content .page-title h1 { font-size:22px; }
 }
 /* A comparison keeps metric labels fixed while broker columns scroll within this frame. */
 .competition-toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; }
