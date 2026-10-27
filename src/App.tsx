@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type ComponentProps } from 'react';
 import { Bookmark, CalendarDays, Check, ChevronLeft, ChevronRight, CircleHelp, ExternalLink, Home, Info, Search, X } from 'lucide-react';
 import { assignLanes, calendarCells, changeMonth, dateKey, dateRange, dayDiff, includesDate, isScheduleEvent, isSubscriptionClosed, kindLabels, lastDay, shortDate, statusLabel, verifiedCloseTime, type EventKind, type ScheduleEvent, type ScheduleResponse } from '../shared/schedule';
-import { closeNative, connectNative, isNativeToss, openExternal } from './platform';
+import { closeNative, connectNative, isNativeToss, openExternal, reportNeedsAd, showReportAd } from './platform';
 import { PreparationChecklist } from './PreparationChecklist';
 import { FactsFallback, type Fact } from './detail-facts';
 
@@ -10,7 +10,7 @@ type Saved = Record<string, ScheduleEvent>;
 const storageKey = 'gongmoa:saved:v2';
 const DetailFacts=lazy(()=>import('./DetailFacts'));
 const CompanyInfo=lazy(()=>import('./CompanyInfo'));
-const Button = ({display, size, variant='fill', ...props}:ComponentProps<'button'>&{display?:'full';size?:'large';variant?:'weak'|'fill'}) => <button {...props} className={`app-action ${variant} ${display==='full'?'full':''}`} />;
+const Button = ({display, size, variant='fill', className='', ...props}:ComponentProps<'button'>&{display?:'full';size?:'large';variant?:'weak'|'fill'}) => <button {...props} className={`app-action ${variant} ${display==='full'?'full':''} ${className}`.trim()} />;
 const displayPrice = (event: ScheduleEvent) => {
   const price = event.priceText?.trim();
   if (!price) return '공시 확인 전';
@@ -95,7 +95,7 @@ function PolicyDocument({ kind }: { kind:'terms'|'privacy' }) {
   ];
   return <article className="policy-document"><h2 className="detail-title">{kind === 'terms' ? '이용약관' : '개인정보 처리방침'}</h2><p className="policy-date">작성일 2026년 10월 27일</p>{sections.map(([title, text]) => <section key={title}><h3>{title}</h3><p>{text}</p></section>)}</article>;
 }
-function Sheet({ title, children, onClose, wide = false }: { title: string; children: ReactNode; onClose: () => void; wide?: boolean }) {
+function Sheet({ title, children, onClose, wide = false, report = false }: { title: string; children: ReactNode; onClose: () => void; wide?: boolean; report?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -104,7 +104,7 @@ function Sheet({ title, children, onClose, wide = false }: { title: string; chil
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = old; previous?.focus(); };
   }, []);
-  return <dialog ref={ref} className={`sheet ${wide ? 'wide' : ''}`} aria-label={title} onCancel={e => { e.preventDefault(); onClose(); }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+  return <dialog ref={ref} className={`sheet ${wide ? 'wide' : ''} ${report ? 'is-report' : ''}`} aria-label={title} onCancel={e => { e.preventDefault(); onClose(); }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
     <div className="sheet-inner"><div className="sheet-handle" /><div className="sheet-top"><button className="icon-button" aria-label="닫기" onClick={onClose}><X size={24} /></button></div>{children}</div>
   </dialog>;
 }
@@ -195,7 +195,10 @@ export default function App() {
   const activeClose = active ? verifiedCloseTime(active) : null;
   const facts: Fact[] = active ? (['subscription', 'refund', 'listing'] as const).map(kind => {
     const event = related.find(e => e.kind === kind) ?? (active.kind === kind ? active : undefined);
-    return { label: kind === 'listing' ? '상장 예정일' : `${kindLabels[kind]}일`, value: event ? dateRange(event) : '공시 확인 전', known: !!event };
+    const subscription = related.find(e => e.kind === 'subscription') ?? (active.kind === 'subscription' ? active : undefined);
+    // Listing dates are fixed by the issue-results report filed after subscription closes.
+    const pending = kind === 'listing' && !!subscription && subscription.end > today ? '청약 후 확정돼요' : '공시 확인 전';
+    return { label: kind === 'listing' ? '상장 예정일' : `${kindLabels[kind]}일`, value: event ? dateRange(event) : pending, known: !!event };
   }) : [];
   if (activeClose) facts.splice(1, 0, { label: '마감 시간', value: `${activeClose.time} · 공시 기준`, known: true });
   const filtered = events.filter(e => (filter === 'all' || e.kind === filter) && (!hideSpac || !/스팩|SPAC/i.test(e.title)) && `${e.company} ${e.title} ${e.broker || ''}`.toLowerCase().includes(query.trim().toLowerCase()));
@@ -223,6 +226,14 @@ export default function App() {
     catch { setToast('기기 저장 공간을 확인한 뒤 다시 시도해 주세요'); }
   }
   const eventStatus = (event: ScheduleEvent) => isSubscriptionClosed(event, nowMinute * 60000) ? '청약 마감' : statusLabel(event, today);
+  const [opening, setOpening] = useState(false);
+  const adGate = reportNeedsAd();
+  async function openReport(event: ScheduleEvent) {
+    if (opening) return;
+    setOpening(true);
+    try { await showReportAd(); go(`${view}/company/${encodeURIComponent(event.id)}`); }
+    finally { setOpening(false); }
+  }
   const row = (event: ScheduleEvent, date = true) => <div className="event-row" key={event.id}>
     <button className="event-open" onClick={() => open(event)}><span className={`event-symbol ${event.kind}`} aria-hidden="true">{kindLabels[event.kind].slice(0, 1)}</span><span className="event-copy"><span className="event-company">{event.company}</span>{event.kind === 'subscription' && event.priceText && <span className="event-price">공모가 <strong>{displayPrice(event)}</strong></span>}<span className="event-meta">{kindLabels[event.kind]} · <BrokerBadges broker={event.broker} fallback="주관사 원본 확인" />{!event.disclosure ? ' · 이전 출처' : ''}</span>{date && <span className="event-date">{dateRange(event)}</span>}{verifiedCloseTime(event) && <span className="event-close">{verifiedCloseTime(event)!.time} 마감</span>}</span><span className={`event-status ${isSubscriptionClosed(event, nowMinute * 60000) ? 'is-closed' : includesDate(event, today) ? 'in-progress' : ''}`}>{eventStatus(event)}</span><ChevronRight className="row-chevron" size={18} /></button>
     <button className={`save-button ${saved[event.id] ? 'is-saved' : ''}`} aria-label={`${event.company} ${kindLabels[event.kind]} 관심 ${saved[event.id] ? '해제' : '저장'}`} aria-pressed={!!saved[event.id]} onClick={() => toggleSave(event)}><Bookmark size={20} fill={saved[event.id] ? 'currentColor' : 'none'} /></button>
@@ -275,11 +286,11 @@ export default function App() {
         {active.kind === 'subscription' && !activeClose && <p className="closing-time detail-closing-time">보통 마지막 날 16:00 마감 · 증권사마다 달라요</p>}
       </section>
       {active.kind === 'subscription' && <PreparationChecklist key={active.id} event={active} />}
-      <div className="detail-actions"><Button display="full" size="large" onClick={() => go(`${view}/company/${encodeURIComponent(active.id)}`)}>기업 정보 보기 <ChevronRight size={18} /></Button>{active.disclosure && <a className="detail-source" href={active.disclosure.sourceUrl} target="_blank" rel="noreferrer">DART 공시 원문 보기 <ExternalLink size={15} /><span className="sr-only"> (외부 페이지)</span></a>}</div>
+      <div className="detail-actions bottom-cta">{active.disclosure && <a className="app-action weak" href={active.disclosure.sourceUrl} target="_blank" rel="noreferrer" aria-label="DART 공시 원문 보기 (외부 페이지)">공시 원문</a>}<Button className="cta-main" disabled={opening} onClick={() => void openReport(active)}>{opening ? '광고를 불러오고 있어요' : adGate ? '광고 보고 기업 리포트 열기' : '기업 리포트 보기'}</Button></div>
     </> : loading ? <div className="detail-loading" role="status" aria-busy="true">저장된 일정을 불러오고 있어요</div> : error && !data ? <Empty title="일정을 다시 불러와 주세요" text="연결 후 상세 일정을 확인할 수 있어요." action={<Button onClick={() => void refresh()}>다시 불러오기</Button>} /> : <Empty title="이 일정을 찾을 수 없어요" text="일정이 변경됐을 수 있어요. 전체 일정에서 다시 확인해 주세요." action={<Button onClick={closeSheet}>일정으로 돌아가기</Button>} />}</Sheet>}
     {route[1] === 'guide' && <Sheet title="공모두 이용 안내" onClose={closeSheet}><div className="guide-tabs">{guides.map((g, i) => <button className={Number(route[2] || 0) === i ? 'active' : ''} key={g.eyebrow} onClick={() => go(`${view}/guide/${i}`)}>{g.eyebrow}</button>)}</div>{(() => { const guide = guides[Number(route[2])] || guides[0]; return <><h2 className="detail-title">{guide.title}</h2><p className="guide-intro">{guide.intro}</p><div className="guide-steps">{guide.steps.map(([title, text], i) => <div key={title}><span>{i + 1}</span><div><h3>{title}</h3><p>{text}</p></div></div>)}</div>{guide === guides[1] && <a className="source-external" href={data?.source.url || 'https://dart.fss.or.kr/dsac008/main.do'} target="_blank" rel="noreferrer">DART 청약 달력에서 직접 확인하기 <ExternalLink size={16} /></a>}<Button display="full" size="large" onClick={closeSheet}>확인했어요</Button></>; })()}</Sheet>}
     {route[1] === 'policy' && (route[2] === 'terms' || route[2] === 'privacy') && <Sheet title={route[2] === 'terms' ? '이용약관' : '개인정보 처리방침'} onClose={closeSheet}><PolicyDocument kind={route[2]} /><Button display="full" size="large" onClick={closeSheet}>확인했어요</Button></Sheet>}
-    {route[1]==='company'&&<Sheet title="기업 요약" onClose={closeSheet}>{active?<><Suspense fallback={<p role="status">기업 정보를 열고 있어요</p>}><CompanyInfo event={active}/></Suspense><Button display="full" size="large" onClick={closeSheet}>일정으로 돌아가기</Button></>:<p role="status">{loading?'저장된 일정을 불러오고 있어요':'이 기업의 일정을 찾을 수 없어요'}</p>}</Sheet>}
+    {route[1]==='company'&&<Sheet title="기업 리포트" onClose={closeSheet} report>{active?<><Suspense fallback={<p role="status">기업 리포트를 열고 있어요</p>}><CompanyInfo event={active} facts={facts} price={displayPrice(active)}/></Suspense><div className="detail-actions bottom-cta"><Button variant="weak" className="cta-main" onClick={closeSheet}>일정으로 돌아가기</Button></div></>:<p role="status">{loading?'저장된 일정을 불러오고 있어요':'이 기업의 일정을 찾을 수 없어요'}</p>}</Sheet>}
     {toast && <div className="toast" role="status"><Check size={18} />{toast}</div>}
   </div>;
 }

@@ -49,7 +49,8 @@ export function disclosedDates(source: DetailSource, paymentText: string | null)
     for(const kind of ['refund','listing'] as const) for(let j=0;j<row.length;j++) {
       if (!labels[kind].test(compact(row[j]))) continue;
       if (j===0 && row.length<=3) add(kind,row.slice(1).join(' '),row.join(' '));
-      else if(table[i+1]?.length===row.length && !row.some(c=>/회사명|기업명/.test(c))) add(kind,table[i+1][j],`${row[j]}: ${table[i+1][j]}`);
+      // Column headers named 상장일 belong to peer, return-history or lock-up tables, never this issuer.
+      else if(kind==='refund' && table[i+1]?.length===row.length && !row.some(c=>/회사명|기업명/.test(c))) add(kind,table[i+1][j],`${row[j]}: ${table[i+1][j]}`);
     }
   }
   // Refund clauses explicitly connecting a date to excess subscription money.
@@ -116,4 +117,15 @@ export function offeringTerms(source:DetailSource, brokerNames:string[], rawPric
     if(feeTable)brokers[0].feeText=feeTable.filter(row=>!row.some(c=>/출\s*고|배정기준/.test(c))).slice(0,6).map(row=>row.join(' · ')).join(' / ').slice(0,350);
   }
   return {pricePerShare:rawPrice?scalar(rawPrice):null,priceConfirmed,brokers};
+}
+
+
+/** The issue-results report (증권발행실적보고서) states the IPO's own trading start date. */
+export function resultsReportListing(text:string):{date:string;quote:string}|null {
+  const flat=text.replace(/\s+/g,' ');
+  if(!/기업공개/.test(flat))return null;
+  const found=[...flat.matchAll(/(?:신규\s*)?상장일\s*\(\s*매매개시일\s*\)\s*[:：]?\s*(20\d{2})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일\s*(?:\(\s*예정\s*\))?/g)];
+  const dates=[...new Set(found.map(m=>`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`))];
+  if(dates.length!==1||parseDartDates(dates[0])?.start!==dates[0])return null;
+  return {date:dates[0],quote:found[0][0].trim().slice(0,160)};
 }

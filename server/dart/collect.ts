@@ -1,7 +1,7 @@
 import { addDays, dateKey, type ScheduleResponse, type ScheduleEvent } from '../../shared/schedule.ts';
 import { createDartClient, DartError, type DartDocument } from './client.ts';
 import { documentGroups, latestOfferings, normalizeOffering, originalDate, parseDartDates } from './normalize.ts';
-import { brokerKey, disclosedDates, disclosedSubscriptionClose, fullOffering, offeringScope, offeringTerms, type DetailSource } from './details.ts';
+import { brokerKey, disclosedDates, disclosedSubscriptionClose, fullOffering, offeringScope, offeringTerms, resultsReportListing, type DetailSource } from './details.ts';
 import { summarizeCompany } from './company.ts';
 
 export const DART_SOURCE = { name: 'DART 증권신고서', url: 'https://dart.fss.or.kr/dsac008/main.do' };
@@ -83,6 +83,20 @@ export async function collectDartSchedule(options: { key: string; fetcher?: type
           return candidate;
         };
         disclosure.refund=inherit('refund');disclosure.listing=inherit('listing');
+        // After subscription the issue-results report gives the actual trading start date.
+        const last=addDays(event.end,-1);
+        if(last<=end && last>=addDays(end,-60)) {
+          const reports=(await client.resultsReports(corp,event.start,end)).filter(r=>r.rcept_dt>=event.start.replaceAll('-','') && r.rcept_dt<=addDays(last,20).replaceAll('-','')).sort((a,b)=>b.rcept_no.localeCompare(a.rcept_no));
+          for(const filed of reports.slice(0,2)) {
+            let results: DartDocument;
+            try { results=await client.document(filed.rcept_no); }
+            catch(error) { if(error instanceof DartError && error.code==='DART_014')continue;throw error; }
+            const found=resultsReportListing(results.text);
+            if(!found || found.date<last || found.date>addDays(last,60))continue;
+            disclosure.listing={...found,receiptNo:filed.rcept_no,sourceUrl:`https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${filed.rcept_no}`,basis:'explicit'};
+            break;
+          }
+        }
         const confirmed=/발행조건확정/.test(report.report_nm);
         const names=event.broker?.split(', ')??[];
         const baseTerms=offeringTerms(baseSource,names,event.priceText,confirmed);

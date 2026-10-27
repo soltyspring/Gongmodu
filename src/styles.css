@@ -784,3 +784,85 @@ button:active:not(:disabled) { transform:translateY(1px); }
   .detail-price strong { font-size:26px; }
   .toast { font-size:14px; }
 }
+
+
+/* Buttons follow TDS Button: xlarge 56px / 16px radius / 17px semibold, flat fills,
+   weak = brand tint. Press feedback is a small scale + dim, no shadow or gradient. */
+:root { --up:#e42939; --down:#1b64da; --accent-weak:rgba(8,127,112,.12); --accent-weak-press:rgba(8,127,112,.2); }
+.app-action { position:relative; display:inline-flex; align-items:center; justify-content:center; gap:4px; min-height:56px; padding:0 20px; border-radius:16px; font-size:17px; font-weight:600; line-height:1.4; letter-spacing:-.02em; white-space:nowrap; text-decoration:none; transition:transform .1s ease-out, background-color .1s ease-out; }
+.app-action.fill { background:var(--accent); color:#fff; }
+.app-action.fill:active:not(:disabled) { background:var(--accent-dark); }
+.app-action.weak { background:var(--accent-weak); color:var(--accent-dark); }
+.app-action.weak:active:not(:disabled) { background:var(--accent-weak-press); }
+.app-shell .app-action:active:not(:disabled) { transform:scale(.97); filter:none; opacity:1; }
+.app-action:disabled { opacity:.6; }
+.featured-panel .app-action { min-height:52px; border-radius:14px; }
+/* Bottom CTA: fixed to the sheet bottom with a short fade, primary takes the wider slot. */
+.app-shell .detail-actions.bottom-cta { position:sticky; bottom:-28px; z-index:2; display:flex; flex-direction:row; gap:8px; margin:24px -28px -28px; padding:20px 28px 28px; border-top:0; background:linear-gradient(to bottom, rgba(255,255,255,0), var(--surface) 20px); }
+.bottom-cta > .app-action { flex:1 1 0; min-width:0; }
+.bottom-cta > .cta-main { flex:2 1 0; }
+.bottom-cta > .app-action.weak:only-child, .bottom-cta > .cta-main:only-child { flex:1; }
+/* Small controls: TDS chip and text-button proportions. */
+.view-calendar .filter-buttons button { min-height:40px; height:40px; border-radius:20px; padding:0 14px; font-size:15px; font-weight:500; }
+.view-calendar .filter-buttons button.active { font-weight:600; }
+.view-calendar .segmented button.selected { box-shadow:0 1px 2px rgba(0,23,51,.06); }
+.view-calendar .today-button { border-radius:10px; }
+.view-calendar .today-button:active { background:var(--accent-weak); }
+.text-button { gap:2px; font-weight:500; }
+.text-button:active,.icon-button:active { background:var(--raised); }
+.notice button { min-height:36px; padding:0 12px; border-radius:10px; background:var(--accent-weak); }
+
+/* Company report: grey canvas, white cards, one figure per tile, then evidence. */
+.sheet.is-report { background:var(--ground); }
+.sheet.is-report .sheet-top { position:sticky; top:-12px; z-index:3; margin:-12px -28px 0; padding:8px 16px 0; background:var(--ground); }
+.company-report { display:grid; gap:12px; }
+.report-hero { padding:4px 4px 12px; }
+.report-eyebrow { font-size:14px; font-weight:600; color:var(--accent-dark); }
+.report-title { margin-top:6px; font-size:28px; font-weight:700; line-height:1.3; letter-spacing:-.035em; word-break:keep-all; }
+.report-broker { margin-top:6px; font-size:15px; color:var(--muted); }
+.report-offer { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1px; margin:20px 0 0; border-radius:16px; overflow:hidden; background:var(--border); }
+.report-offer > div { display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:14px 16px; background:var(--surface); }
+.report-offer dt { font-size:13px; color:var(--subtle); }
+.report-offer dd { margin:0; font-size:17px; font-weight:700; text-align:left; font-variant-numeric:tabular-nums; }
+.report-offer dd.is-unknown { font-size:15px; font-weight:500; color:var(--subtle); }
+.report-card { padding:22px 20px; border-radius:20px; background:var(--surface); }
+.report-card h3 { font-size:18px; font-weight:700; letter-spacing:-.03em; }
+.report-card-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.report-card-head > span { font-size:13px; color:var(--subtle); }
+.report-kpis { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:16px; }
+.report-kpi { display:flex; flex-direction:column; gap:4px; padding:16px; border-radius:14px; background:var(--raised); min-width:0; }
+.report-kpi:first-child { grid-column:1/-1; }
+.report-kpi:first-child strong { font-size:28px; }
+.report-kpi > span { font-size:13px; color:var(--muted); }
+.report-kpi strong { font-size:22px; font-weight:700; letter-spacing:-.03em; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.report-kpi small { font-size:14px; font-weight:600; color:var(--muted); font-variant-numeric:tabular-nums; }
+.tone-up { color:var(--up) !important; }
+.tone-down { color:var(--down) !important; }
+.report-kpi strong.tone-up { color:var(--text) !important; }
+.report-points { list-style:none; margin:14px 0 0; padding:0; display:grid; gap:12px; }
+.report-points li { display:flex; gap:10px; align-items:flex-start; font-size:16px; line-height:1.55; font-weight:500; word-break:keep-all; }
+.report-points svg { flex:none; margin-top:2px; padding:2px; width:22px; height:22px; border-radius:50%; color:#fff; background:var(--accent); }
+.report-business { display:grid; gap:18px; margin-top:16px; }
+.report-label { display:inline-block; margin-bottom:6px; padding:2px 8px; border-radius:6px; font-size:13px; font-weight:600; color:var(--muted); background:var(--raised); }
+.report-business p,.report-empty { font-size:16px; line-height:1.7; color:#333d4b; word-break:keep-all; overflow-wrap:anywhere; }
+.report-empty { margin-top:12px; color:var(--muted); }
+.report-card .financial-chart { margin-top:14px; }
+.report-card .financial-chart-detail { background:var(--raised); }
+.financial-chart-detail dd.is-loss { color:var(--down); }
+.report-sources { padding:22px 8px 8px; }
+.report-sources h3 { padding:0 12px; }
+.report-sources a { display:flex; align-items:center; gap:12px; min-height:64px; margin-top:4px; padding:10px 12px; border-radius:14px; }
+.report-sources a:active { background:var(--raised); }
+.report-sources a > span:first-child { flex:1; display:grid; gap:2px; min-width:0; }
+.report-sources strong { font-size:16px; font-weight:600; }
+.report-sources small { font-size:13px; color:var(--subtle); }
+.report-sources svg { color:var(--subtle); }
+.report-disclaimer { padding:4px 8px 0; font-size:13px; line-height:1.6; color:var(--subtle); word-break:keep-all; }
+.sheet.is-report .detail-actions.bottom-cta { background:linear-gradient(to bottom, rgba(242,244,246,0), var(--ground) 20px); }
+@media (max-width:600px) {
+  .app-shell .detail-actions.bottom-cta { bottom:calc(-24px - env(safe-area-inset-bottom,0px)); margin:20px -24px calc(-24px - env(safe-area-inset-bottom,0px)); padding:16px 24px calc(16px + env(safe-area-inset-bottom,0px)); }
+  .sheet.is-report .sheet-top { margin:-10px -24px 0; padding:6px 12px 0; top:-10px; }
+  .report-title { font-size:26px; }
+  .report-card { padding:20px 18px; }
+}
+@media (prefers-reduced-motion:reduce) { .app-action { transition:none; } .app-shell .app-action:active:not(:disabled) { transform:none; } }

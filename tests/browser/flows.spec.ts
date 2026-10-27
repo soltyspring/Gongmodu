@@ -18,7 +18,7 @@ async function setup(page: Page) {
   await page.route('**/api/competition', route => route.fulfill({ json: {rows:[],fetchedAt:data.fetchedAt,refreshAfterSeconds:300} }));
 }
 
-test('오늘 일정과 기업 요약을 확인하고 재무 기간·손실·출처를 보존해요', async ({page})=>{
+test('오늘 일정과 기업 리포트를 확인하고 재무 기간·손실·출처를 보존해요', async ({page})=>{
   await setup(page);await page.clock.setSystemTime(new Date('2026-10-27T03:00:00Z'));
   const summary={overview:'의료기기용 부품을 제조하는 기업입니다.',revenueModel:'자사 부품을 제조하여 판매하는 방식으로 매출을 내고 있습니다.',financials:[{period:'2026년 반기',revenue:'10,000',operatingProfit:'(1,000)',netIncome:'(2,000)',accounting:'K-IFRS'}],unit:'천원',scope:'연결 요약재무정보',receiptNo:events[0].disclosure.receiptNo,sourceUrl:events[0].disclosure.sourceUrl};
   const sourceUrl='https://m.irgo.co.kr/IPO%EC%9E%90%EB%A3%8C/123/TB/test-IR-BOOK';
@@ -26,8 +26,8 @@ test('오늘 일정과 기업 요약을 확인하고 재무 기간·손실·출�
   await page.goto('/');await expect(page.locator('.home-day-heading h3')).toHaveText('오늘 일정');
   await page.getByRole('button',{name:'공모가 보러가기'}).click();
   await expect(page.getByRole('button',{name:/상세 관심 저장/})).toHaveCount(0);
-  await page.getByRole('button',{name:'기업 정보 보기'}).click();
-  const company=page.getByRole('dialog',{name:'기업 요약'});await expect(company).toContainText('의료기기용 부품');await expect(company).toContainText('단위: 만원');await expect(company.locator('.financial-chart-detail')).toContainText('-100');
+  await page.getByRole('button',{name:'기업 리포트 보기'}).click();
+  const company=page.getByRole('dialog',{name:'기업 리포트'});await expect(company).toContainText('의료기기용 부품');await expect(company).toContainText('단위: 만원');await expect(company.locator('.financial-chart-detail')).toContainText('-100');
   await expect(company.getByRole('link',{name:/요약에 사용한 증권신고서/})).toHaveAttribute('href',summary.sourceUrl);
   await expect(company).toContainText('순이익');await expect(company.locator('.financial-chart-detail')).toContainText('-200');
   await expect(company.getByRole('link',{name:/IRGO에서 기업 소개 자료 보기/})).toHaveAttribute('href',sourceUrl);
@@ -42,7 +42,7 @@ test('재무 차트에서 여러 기간을 함께 비교하고 선택한 실적�
     {period:'2024년',revenue:'10,000,000',operatingProfit:'0',netIncome:null,accounting:'K-IFRS'},
   ],unit:'천원',scope:'연결 요약재무정보',receiptNo:events[0].disclosure.receiptNo,sourceUrl:events[0].disclosure.sourceUrl};
   await page.unroute('**/api/schedule');await page.route('**/api/schedule',r=>r.fulfill({json:{...data,events:[{...events[0],disclosure:{...events[0].disclosure,companySummary:summary}}]}}));
-  await page.goto('/');await page.getByRole('button',{name:'공모가 보러가기'}).click();await page.getByRole('button',{name:'기업 정보 보기'}).click();
+  await page.goto('/');await page.getByRole('button',{name:'공모가 보러가기'}).click();await page.getByRole('button',{name:'기업 리포트 보기'}).click();
   const chart=page.locator('.financial-chart');
   await expect(chart.getByRole('img')).toBeVisible();
   await expect(chart.locator('.financial-chart-periods button')).toHaveCount(3);
@@ -55,11 +55,11 @@ test('재무 차트에서 여러 기간을 함께 비교하고 선택한 실적�
     await page.setViewportSize({width,height:1000});
     await expect(chart).toBeVisible();
     expect(await chart.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
-    const section=page.locator('.company-info section').filter({has:page.getByRole('heading',{name:'매출과 이익을 한눈에'})});
+    const section=page.locator('.company-report section').filter({has:page.getByRole('heading',{name:'매출과 이익을 한눈에'})});
     await section.screenshot({path:`.cache/financial-chart-${testInfo.project.name}-${width}.png`});
   }
   if(testInfo.project.name==='mobile'){
-    const markup=await page.locator('.company-info').evaluate(el=>el.outerHTML);
+    const markup=await page.locator('.company-report').evaluate(el=>el.outerHTML);
     const css=await readFile('src/styles.css','utf8');
     await writeFile('.cache/financial-chart-preview.html',`<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>공모두 기업 재무 차트 · 테스트 자료</title><style>${css}body{background:white}main{max-width:540px;margin:auto;padding:24px}h1{font-size:24px;margin-bottom:24px}</style><main><h1>공모두 · 기업 정보</h1>${markup}</main></html>`);
   }
@@ -116,8 +116,8 @@ test('홈 캘린더 → 상세 → 저장 → 새로고침 → 관심 일정', a
   await expect(dialog.getByText('날짜 단위 일정이에요', { exact: false })).toHaveCount(0);
   await expect(dialog.getByText('공시 표기', { exact: false })).toHaveCount(0);
   await expect(dialog.getByText('공시와 날짜 확인 근거', { exact: true })).toHaveCount(0);
-  await dialog.getByRole('button', { name: '기업 정보 보기' }).click();
-  await expect(page.getByRole('dialog', {name:'기업 요약'})).toContainText('증권신고서 기준');
+  await dialog.getByRole('button', { name: '기업 리포트 보기' }).click();
+  await expect(page.getByRole('dialog', {name:'기업 리포트'})).toContainText('기업 리포트 · 증권신고서 기준');
   await page.getByRole('button', {name:'일정으로 돌아가기',exact:true}).click();
   await dialog.getByRole('button', { name: '닫기', exact: true }).click();
   await page.getByRole('button', { name:'가까운 청약 관심 저장',exact:true }).click();
@@ -415,4 +415,32 @@ test('화면을 열어 두거나 조회가 실패해도 자동 재수집 요청�
   await page.clock.fastForward(60000);
   expect(calls).toBe(afterFailure);
   await expect(page.getByRole('button', {name:'다시 불러오기'})).toBeVisible();
+});
+
+test('기업 리포트는 공모 개요·실적 KPI·핵심 포인트·원문을 보여주고 상세 CTA는 두 버튼이에요', async ({page})=>{
+  await setup(page);
+  const summary={overview:'의료기기용 부품을 제조하는 기업입니다.',revenueModel:'부품을 판매해요.',financials:[
+    {period:'2025년',revenue:'24,000,000',operatingProfit:'2,400,000',netIncome:'1,000,000',accounting:null},
+    {period:'2024년',revenue:'20,000,000',operatingProfit:'(1,000,000)',netIncome:null,accounting:null},
+  ],unit:'천원',scope:'연결 요약재무정보',receiptNo:events[0].disclosure.receiptNo,sourceUrl:events[0].disclosure.sourceUrl};
+  await page.unroute('**/api/schedule');
+  await page.route('**/api/schedule',r=>r.fulfill({json:{...data,events:[{...events[0],priceText:'12,000',disclosure:{...events[0].disclosure,companySummary:summary}},events[3]]}}));
+  await page.goto('/');await page.getByRole('button',{name:'공모가 보러가기'}).click();
+  const detail=page.getByRole('dialog');
+  // An upcoming subscription has no listing date yet; say when it is fixed instead of 'unknown'.
+  await expect(detail.locator('.detail-facts')).toContainText('청약 후 확정돼요');
+  const cta=detail.locator('.bottom-cta');
+  await expect(cta.getByRole('link',{name:/DART 공시 원문 보기/})).toHaveAttribute('href',events[0].disclosure.sourceUrl);
+  const main=cta.getByRole('button',{name:'기업 리포트 보기'});
+  const [link,button]=[await cta.getByRole('link').boundingBox(),await main.boundingBox()];
+  expect(button!.height).toBeGreaterThanOrEqual(56);expect(Math.abs(link!.y-button!.y)).toBeLessThan(1);expect(button!.width).toBeGreaterThan(link!.width);
+  await main.click();
+  const report=page.getByRole('dialog',{name:'기업 리포트'});
+  await expect(report.locator('.report-offer')).toContainText('12,000원');
+  await expect(report.locator('.report-offer')).toContainText('10.28');
+  const kpis=report.getByRole('region',{name:'실적 한눈에'});
+  await expect(kpis).toContainText('240억원');await expect(kpis).toContainText('▲ 20%');await expect(kpis).toContainText('영업이익률 10%');
+  await expect(report.getByRole('region',{name:'핵심 포인트'})).toContainText('2025년에 영업이익이 흑자로 바뀌었어요.');
+  await expect(report.getByRole('link',{name:/요약에 사용한 증권신고서/})).toHaveAttribute('href',summary.sourceUrl);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });

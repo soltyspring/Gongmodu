@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { zipSync,strToU8 } from 'fflate';
-import { disclosedDates, offeringTerms, offeringScope } from '../server/dart/details.ts';
+import { disclosedDates, offeringTerms, offeringScope, resultsReportListing } from '../server/dart/details.ts';
 import { documentData, type DartDocument } from '../server/dart/client.ts';
 import { collectDartSchedule } from '../server/dart/collect.ts';
 
@@ -15,6 +15,9 @@ test('환불 날짜 명시와 납입일 당일 반환 문구를 구분하고 단
   assert.equal(disclosedDates(source('초과 청약증거금은 2026.10.29에 환불합니다. 초과 청약증거금은 2026.10.30에 환불합니다.'),'2026.10.30').refund,null);
 });
 test('상장 예정일의 표·발행인 문장을 읽고 미정·타사 이력·유효하지 않은 날짜는 제외',()=>{
+  // Real false positives: peer-company and lock-up tables with a 상장일 column header.
+  assert.equal(disclosedDates(source('',[[['상장사','상장일','최종 유사회사 선정'],['오름테라퓨틱','2025.02.14','한미약품, HK이노엔']]]),null).listing,null);
+  assert.equal(disclosedDates(source('',[[['행사(유통)가능 시점','이정민','차ㅇㅇ'],['상장일','-','18,700'],['2027-03-23','-','7,013']]]),null).listing,null);
   const table=source('',[[['구분','일정'],['상장예정일','2026.11.04']]]);
   assert.equal(disclosedDates(table,null).listing?.date,'2026-11-04');
   assert.equal(disclosedDates(source('당사의 상장예정일은 2026년 11월 04일입니다.'),null).listing?.date,'2026-11-04');
@@ -58,4 +61,14 @@ test('변경부분만 있는 최종 공시는 동일 최초제출일의 전문�
   const result=await collectDartSchedule({key:'a'.repeat(40),fetcher,delayMs:0,now:()=>Date.parse('2026-10-25T03:00:00Z'),lookbackDays:20});
   assert.equal(result.events.length,2);
   const refund=result.events.find(e=>e.kind==='refund')!;assert.equal(refund.start,'2026-10-29');assert.equal(refund.end,'2026-10-30');assert.equal(refund.disclosure?.refund?.receiptNo,original.rcept_no);
+});
+
+test('증권발행실적보고서의 상장일(매매개시일)은 두 표기 모두 읽고 미정·기업공개 외 보고서는 제외',()=>{
+  const intro='Ⅰ. 발행개요 2. 발행 개요 구분 발행총액 비고 기업공개 20,000,000,000 ';
+  assert.deepEqual(resultsReportListing(`${intro}Ⅳ. 증권교부일 등 2. 증자 등기일 2026년 09월 16일 (예정) 3. 상장일(매매개시일) 2026년 09월 21일 (예정)`)?.date,'2026-09-21');
+  assert.equal(resultsReportListing(`${intro}2. 상장일(매매개시일) : 2026년 9월 10일(예정)3. 증자등기일 : 2026년 9월 7일(예정)`)?.date,'2026-09-10');
+  assert.equal(resultsReportListing(`${intro}상장일(매매개시일) 미정`),null);
+  assert.equal(resultsReportListing('유상증자 상장일(매매개시일) 2026년 09월 21일'),null);
+  assert.equal(resultsReportListing(`${intro}상장일(매매개시일) 2026년 02월 30일`),null);
+  assert.equal(resultsReportListing(`${intro}상장일(매매개시일) 2026년 09월 21일 … 상장일(매매개시일) 2026년 09월 22일`),null);
 });

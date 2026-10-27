@@ -132,6 +132,14 @@ export function createDartClient(key: string, fetcher: typeof fetch = fetch, del
     async equity(corpCode: string, start: string, end: string) {
       return readGroups(await json('estkRs.json', { corp_code: corpCode, bgn_de: compact(start), end_de: compact(end) }));
     },
+    /** Issue-results reports for one company. They are filed after subscription, outside C001. */
+    async resultsReports(corpCode: string, start: string, end: string) {
+      const value = await json('list.json', { corp_code: corpCode, bgn_de: compact(start), end_de: compact(end), pblntf_ty: 'C', last_reprt_at: 'N', page_count: '100' });
+      if (value.status === '013') return [];
+      if (!Array.isArray(value.list)) throw new DartError('DART_BAD_RESPONSE');
+      return value.list.filter(record).filter(row => row.corp_code === corpCode && /^\d{14}$/.test(String(row.rcept_no)) && /^\d{8}$/.test(String(row.rcept_dt)) && typeof row.report_nm === 'string' && /증권발행실적보고서/.test(row.report_nm))
+        .map(row => ({ rcept_no: String(row.rcept_no), rcept_dt: String(row.rcept_dt), report_nm: String(row.report_nm) }));
+    },
     async document(receipt: string) { return documentData(await request('document.xml', { rcept_no: receipt }, true)); },
   };
 }
