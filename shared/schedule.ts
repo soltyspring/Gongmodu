@@ -8,9 +8,10 @@ export interface SubscriptionClose {
 }
 export interface CompanySummary {
   overview:string|null; revenueModel:string|null;
-  financials:{period:string;revenue:string;operatingProfit:string|null;accounting:string|null}[];
+  financials:{period:string;revenue:string;operatingProfit:string|null;accounting:string|null;netIncome?:string|null}[];
   unit:string|null; scope:string; receiptNo:string; sourceUrl:string;
 }
+export interface CompanyReference { company:string; sourceName:'IRGO'; sourceUrl:string; fetchedAt:string }
 export interface BrokerTerms {
   broker: string; allocatedShares: number | null; equalShares: number | null;
   marginRate: number | null; minShares: number | null; limitShares: number | null;
@@ -31,6 +32,7 @@ export interface DartDisclosure {
   refund?: DateEvidence | null; listing?: DateEvidence | null;
   subscriptionClose?: SubscriptionClose | null;
   companySummary?: CompanySummary;
+  companyReferences?: CompanyReference[];
   terms?: OfferingTerms;
 }
 export interface ScheduleEvent {
@@ -96,6 +98,12 @@ export function statusLabel(event: ScheduleEvent, today: string) {
   }
   const diff = dayDiff(today, event.start);
   return diff === 1 ? '내일' : `D-${diff}`;
+}
+export function companyReferences(event:ScheduleEvent):CompanyReference[] {
+  return (event.disclosure?.companyReferences??[]).filter(reference=>{
+    if(reference.company!==event.company||reference.sourceName!=='IRGO'||!Number.isFinite(Date.parse(reference.fetchedAt)))return false;
+    try{const url=new URL(reference.sourceUrl);return url.origin==='https://m.irgo.co.kr'&&/^\/IPO자료\/\d+\/(?:TB|IC)\//.test(decodeURI(url.pathname));}catch{return false;}
+  }).slice(0,2);
 }
 /** Only a verified source-bound deadline can end a subscription before its exclusive end date. */
 export function verifiedCloseTime(event: ScheduleEvent): SubscriptionClose | null {

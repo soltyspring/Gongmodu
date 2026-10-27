@@ -122,7 +122,7 @@ test('명시적 수집만 실행하고 실패 후 정상 스냅샷과 실제 확
   try {
     const path=join(directory,'snapshot.json');
     let calls=0,fail=false;
-    const feed=createFeed({key:()=>key,snapshotPath:path,collect:async()=>{calls++; if(fail) throw new DartError('DART_020'); return response();}});
+    const feed=createFeed({key:()=>key,snapshotPath:path,references:async data=>data,collect:async()=>{calls++; if(fail) throw new DartError('DART_020'); return response();}});
     const [a,b]=await Promise.all([feed.sync(),feed.sync()]); assert.equal(calls,1);assert.deepEqual(a,b);
     const reader=createSnapshotReader(path);
     await Promise.all(Array.from({length:20},()=>reader())); assert.equal(calls,1);

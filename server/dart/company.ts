@@ -38,13 +38,16 @@ export function summarizeCompany(source:DetailSource):CompanySummary {
     if(!unit)continue;
     result.unit=unit;result.scope=/요약연결재무정보/.test(context)?'연결 요약재무정보':/요약별도|요약개별/.test(context)?'별도 요약재무정보':'공시 요약재무정보';
     const profit=table.find(row=>/^영업이익(?:\((?:영업)?손실\))?$|^영업손실$/.test(compact(row[0])));
+    const net=table.find(row=>/^당기순이익(?:\((?:당기)?순손실\))?$|^당기순손실$/.test(compact(row[0])));
     const accounting=table.find(row=>compact(row[0])==='회계처리기준');
     const numeric=(s:string)=>/^[-−]?[\d,]+(?:\.\d+)?$|^\([\d,]+(?:\.\d+)?\)$/.test(compact(s));
     result.financials=header.slice(1,5).flatMap((period,j)=>{
       if(!numeric(revenue[j+1])||/추정|예상|전망/.test(period))return [];
       const value=profit?.length===header.length&&numeric(profit[j+1])?profit[j+1].trim():null;
       const loss=value&&compact(profit![0])==='영업손실'&&!/^[-−(]|^0$/.test(value)?`(${value})`:value;
-      return [{period:period.replace(/\s+/g,' ').trim(),revenue:revenue[j+1].trim(),operatingProfit:loss,accounting:accounting?.length===header.length?accounting[j+1].trim():null}];
+      const netValue=net?.length===header.length&&numeric(net[j+1])?net[j+1].trim():null;
+      const netLoss=netValue&&compact(net![0])==='당기순손실'&&!/^[-−(]|^0$/.test(netValue)?`(${netValue})`:netValue;
+      return [{period:period.replace(/\s+/g,' ').trim(),revenue:revenue[j+1].trim(),operatingProfit:loss,netIncome:netLoss,accounting:accounting?.length===header.length?accounting[j+1].trim():null}];
     });
     break;
   }

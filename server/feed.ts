@@ -2,11 +2,13 @@ import { collectDartSchedule } from './dart/collect.ts';
 import { DartError } from './dart/client.ts';
 import { publishSnapshot, snapshotPath } from './snapshot.ts';
 import type { ScheduleResponse } from '../shared/schedule.ts';
+import { enrichCompanyReferences } from './company-references.ts';
 
 interface Options {
   fetcher?: typeof fetch; now?: () => number; key?: () => string | undefined;
   snapshotPath?: string | null; lookbackDays?: number; delayMs?: number;
   collect?: typeof collectDartSchedule;
+  references?: (data:ScheduleResponse)=>Promise<ScheduleResponse>;
 }
 /** Explicit collector, run only by the Ubuntu timer or the operator's sync command. */
 export function createFeed(options: Options = {}) {
@@ -17,9 +19,10 @@ export function createFeed(options: Options = {}) {
     if (!/^[a-zA-Z0-9]{40}$/.test(key)) throw new DartError('DART_KEY_INVALID');
     if (!pending) pending = (async () => {
       try {
-        const result = await (options.collect ?? collectDartSchedule)({ key,
+        const collected = await (options.collect ?? collectDartSchedule)({ key,
           fetcher: options.fetcher, now: options.now, delayMs: options.delayMs,
           lookbackDays: options.lookbackDays ?? Number(process.env.DART_LOOKBACK_DAYS || 180) });
+        const result=await (options.references??(data=>enrichCompanyReferences(data,options.fetcher,options.now?.())))(collected);
         const path = options.snapshotPath === undefined ? snapshotPath() : options.snapshotPath;
         if (path) await publishSnapshot(path, result);
         return result;
