@@ -90,6 +90,8 @@ test('홈 문구가 청약 시작과 마감 날짜에 맞게 바뀌어요', asyn
   await page.clock.setFixedTime(new Date('2026-10-27T03:00:00Z'));
   await page.reload();
   await expect(heading).toHaveText('오늘 마감 예정이에요');
+  await expect(page.locator('.featured-panel .status-badge')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '가까운 청약 관심 저장' })).toBeVisible();
   await expect(page.locator('.featured-company')).toHaveText('한빛테크');
   await page.clock.setFixedTime(new Date('2026-10-29T03:00:00Z'));
   await page.reload();
