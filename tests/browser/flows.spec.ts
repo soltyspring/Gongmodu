@@ -499,3 +499,17 @@ test('수요예측·청약 결과 카드는 공시 수치를 보여주고 값이
   await expect(page.getByRole('dialog').getByRole('region', { name: '청약 결과' })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test('달력 날짜를 누르는 동안 칸이 움직이지 않아 이어진 일정 막대가 끊기지 않아요', async ({ page }) => {
+  await setup(page); await page.goto('/#calendar');
+  const day = page.getByRole('button', { name: '2026-10-26, 일정 2개', exact: true });
+  const next = page.getByRole('button', { name: '2026-10-27, 일정 2개', exact: true });
+  const bar = (cell: typeof day) => cell.locator('.calendar-event.subscription').first().boundingBox();
+  const before = await bar(day);
+  const box = (await day.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + 10); await page.mouse.down();
+  const [pressed, neighbour] = [await bar(day), await bar(next)];
+  expect(pressed!.y).toBe(before!.y); expect(pressed!.y).toBe(neighbour!.y);
+  await expect(day).toHaveCSS('transform', 'none');
+  await page.mouse.up();
+});

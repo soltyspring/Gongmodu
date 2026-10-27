@@ -922,3 +922,9 @@ button:active:not(:disabled) { transform:translateY(1px); }
 .company-report .result-facts > div { background:var(--raised); }
 .result-facts dd { text-align:left; }
 @media (max-width:600px) { .result-hero strong { font-size:26px; } }
+
+/* Pressing a date must not move its cell: a 1px shift breaks bars that span neighbouring days.
+   Feedback goes on the date circle instead. */
+.app-shell .calendar-day:active:not(:disabled) { transform:none; }
+.calendar-day:active .day-number { background:var(--active); color:var(--text); }
+.calendar-day.selected:active .day-number { background:var(--text); color:var(--surface); opacity:.85; }
