@@ -19,14 +19,17 @@ async function setup(page: Page) {
 
 test('오늘 일정과 기업 요약을 확인하고 재무 기간·손실·출처를 보존해요', async ({page})=>{
   await setup(page);await page.clock.setSystemTime(new Date('2026-10-27T03:00:00Z'));
-  const summary={overview:'의료기기용 부품을 제조하는 기업입니다.',revenueModel:'자사 부품을 제조하여 판매하는 방식으로 매출을 내고 있습니다.',financials:[{period:'2026년 반기',revenue:'10,000',operatingProfit:'(1,000)',accounting:'K-IFRS'}],unit:'천원',scope:'연결 요약재무정보',receiptNo:events[0].disclosure.receiptNo,sourceUrl:events[0].disclosure.sourceUrl};
-  await page.unroute('**/api/schedule');await page.route('**/api/schedule',r=>r.fulfill({json:{...data,events:[{...events[0],disclosure:{...events[0].disclosure,companySummary:summary}}]}}));
+  const summary={overview:'의료기기용 부품을 제조하는 기업입니다.',revenueModel:'자사 부품을 제조하여 판매하는 방식으로 매출을 내고 있습니다.',financials:[{period:'2026년 반기',revenue:'10,000',operatingProfit:'(1,000)',netIncome:'(2,000)',accounting:'K-IFRS'}],unit:'천원',scope:'연결 요약재무정보',receiptNo:events[0].disclosure.receiptNo,sourceUrl:events[0].disclosure.sourceUrl};
+  const sourceUrl='https://m.irgo.co.kr/IPO%EC%9E%90%EB%A3%8C/123/TB/test-IR-BOOK';
+  await page.unroute('**/api/schedule');await page.route('**/api/schedule',r=>r.fulfill({json:{...data,events:[{...events[0],disclosure:{...events[0].disclosure,companySummary:summary,companyReferences:[{company:events[0].company,sourceName:'IRGO',sourceUrl,fetchedAt:data.fetchedAt}]}}]}}));
   await page.goto('/');await expect(page.locator('.home-day-heading h3')).toHaveText('오늘 일정');
   await page.getByRole('button',{name:'공모가 보러가기'}).click();
   await expect(page.getByRole('button',{name:/상세 관심 저장/})).toHaveCount(0);
-  await page.getByRole('button',{name:'이 기업에 대한 정보가 궁금하신가요?'}).click();
+  await page.getByRole('button',{name:'기업 정보 보기'}).click();
   const company=page.getByRole('dialog',{name:'기업 요약'});await expect(company).toContainText('의료기기용 부품');await expect(company).toContainText('단위: 천원');await expect(company).toContainText('(1,000)');
   await expect(company.getByRole('link',{name:/요약에 사용한 증권신고서/})).toHaveAttribute('href',summary.sourceUrl);
+  await expect(company).toContainText('당기순이익');await expect(company).toContainText('(2,000)');
+  await expect(company.getByRole('link',{name:/IRGO에서 기업 소개 자료 보기/})).toHaveAttribute('href',sourceUrl);
   await page.getByRole('button',{name:'일정으로 돌아가기',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('공모가 정보');
 });
 
@@ -81,7 +84,7 @@ test('홈 캘린더 → 상세 → 저장 → 새로고침 → 관심 일정', a
   await expect(dialog.getByText('날짜 단위 일정이에요', { exact: false })).toHaveCount(0);
   await expect(dialog.getByText('공시 표기', { exact: false })).toHaveCount(0);
   await expect(dialog.getByText('공시와 날짜 확인 근거', { exact: true })).toHaveCount(0);
-  await dialog.getByRole('button', { name: '이 기업에 대한 정보가 궁금하신가요?' }).click();
+  await dialog.getByRole('button', { name: '기업 정보 보기' }).click();
   await expect(page.getByRole('dialog', {name:'기업 요약'})).toContainText('증권신고서로 정리했어요');
   await page.getByRole('button', {name:'일정으로 돌아가기',exact:true}).click();
   await dialog.getByRole('button', { name: '닫기', exact: true }).click();
