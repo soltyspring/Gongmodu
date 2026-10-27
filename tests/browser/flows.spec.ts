@@ -27,7 +27,10 @@ test('홈 캘린더 → 상세 → 저장 → 새로고침 → 관심 일정', a
   await expect(dialog.getByRole('heading', { name: '한빛테크', exact: true })).toBeVisible();
   await expect(dialog).toContainText('10.26 – 10.27');
   await expect(dialog.getByRole('region', { name: '공모가 정보' })).toContainText('10,000원~12,000원');
-  await expect(dialog.getByRole('region', { name: '공모가 정보' })).toContainText('확정 여부와 단위는 공시에서 확인');
+  await expect(dialog.getByRole('heading', { name: '일정', exact: true })).toBeVisible();
+  await expect(dialog.getByText('날짜 단위 일정이에요', { exact: false })).toHaveCount(0);
+  await expect(dialog.getByText('공시 표기', { exact: false })).toHaveCount(0);
+  await expect(dialog.getByText('공시와 날짜 확인 근거', { exact: true })).toHaveCount(0);
   await dialog.getByRole('button', { name: '한빛테크 상세 관심 저장' }).click();
   await dialog.getByRole('button', { name: '닫기', exact: true }).click();
   await page.reload();
@@ -53,6 +56,17 @@ test('홈 빠른 저장과 청약 준비 기록을 다시 방문해 확인하고
   await page.reload();
   await expect(checklist.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
   await expect(page.getByRole('complementary', { name: '광고', exact: true })).toHaveCount(0);
+});
+
+test('DART 숫자 공모가에 원을 표시하고 중복 안내를 숨겨요', async ({ page }) => {
+  await setup(page); await page.unroute('**/api/schedule');
+  await page.route('**/api/schedule', route => route.fulfill({ json: { ...data, events: [{ ...events[0], priceText: '2,000' }] } }));
+  await page.goto('/');
+  await page.getByRole('button', { name: '공모가 보러가기' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('region', { name: '공모가 정보' })).toContainText('2,000원');
+  await expect(dialog.getByRole('heading', { name: '일정', exact: true })).toBeVisible();
+  await expect(dialog.locator('.detail-date')).toHaveCount(0);
 });
 
 test('월간 달력, exclusive 종료, 검색, 종류 필터, 스팩 제외, 월 이동', async ({ page }) => {
@@ -164,11 +178,9 @@ test('주관사 미확인은 누락 안내와 원문 확인 동선을 표시', a
   await expect(page.getByRole('status')).toContainText('주관사 확인이 필요한 일정이 1개');
   await page.getByRole('button', { name: '공모가 보러가기' }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog).toContainText('주관사를 자동으로 확인하지 못했어요');
+  await expect(dialog).toContainText('원본 확인 필요');
   await expect(dialog.getByRole('region', { name: '공모가 정보' })).toContainText('아직 확인되지 않았어요');
-  await dialog.getByText('공시와 날짜 확인 근거', { exact: true }).click();
-  await dialog.getByText('원본 공시 정보 보기', { exact: true }).click();
-  await expect(dialog.getByRole('link', { name: 'DART 증권신고서 원문 열기' })).toHaveAttribute('href', incomplete.disclosure.sourceUrl);
+  await expect(dialog.getByRole('link', { name: /DART 공시 원문 보기/ })).toHaveAttribute('href', incomplete.disclosure.sourceUrl);
 });
 
 test('원문으로 보완한 증권사명은 홈·검색·상세와 확인 근거에 반영', async ({ page }) => {
@@ -183,7 +195,8 @@ test('원문으로 보완한 증권사명은 홈·검색·상세와 확인 근�
   await page.getByRole('textbox', { name: '종목명 또는 증권사 검색' }).fill('아이엠');
   await expect(page.locator('.list-mode .event-row')).toHaveCount(1);
   await page.locator('.event-open').click();
-  await expect(page.getByRole('dialog')).toContainText('주관사는 이 공시의 원문 인수인 표에서 확인했어요');
+  await expect(page.getByRole('dialog')).toContainText('아이엠증권');
+  await expect(page.getByRole('dialog')).not.toContainText('원문 인수인 표');
 });
 
 test('보류한 경쟁률 화면과 수집 요청은 출시 앱에 노출하지 않음', async ({ page }) => {
@@ -198,7 +211,7 @@ test('보류한 경쟁률 화면과 수집 요청은 출시 앱에 노출하지 
   expect(requests).toEqual([]);
 });
 
-test('DART 원문 환불 근거와 출처를 상세에서 확인하고 내보내기는 제공하지 않음',async({page})=>{
+test('상세에서 환불 일정과 공시 원문을 확인하고 내보내기는 제공하지 않음',async({page})=>{
   await setup(page); await page.unroute('**/api/schedule');
   const evidence={date:'2026-10-29',quote:'초과 청약증거금은 2026년 10월 29일에 환불합니다.',basis:'explicit',receiptNo:'20261008000123',sourceUrl:'https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20261008000123'};
   const disclosure={...events[0].disclosure,refund:evidence};
@@ -206,9 +219,9 @@ test('DART 원문 환불 근거와 출처를 상세에서 확인하고 내보내
   await page.route('**/api/schedule',route=>route.fulfill({json:{...data,events:[{...events[0],disclosure},refund]}}));
   await page.goto('/#calendar/event/refund-verified');
   const dialog=page.getByRole('dialog');
-  await dialog.getByText('공시와 날짜 확인 근거', {exact:true}).click();
-  await expect(dialog).toContainText(evidence.quote);
-  await expect(dialog.getByRole('link',{name:/근거 공시/})).toHaveAttribute('href',evidence.sourceUrl);
+  await expect(dialog.getByRole('heading', {name:'일정',exact:true})).toBeVisible();
+  await expect(dialog.locator('.detail-timeline')).toContainText('10.29');
+  await expect(dialog.getByRole('link',{name:/DART 공시 원문 보기/})).toHaveAttribute('href',disclosure.sourceUrl);
   await expect(dialog.getByRole('button', { name: /내보내기/ })).toHaveCount(0);
 });
 
