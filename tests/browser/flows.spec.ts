@@ -191,8 +191,8 @@ test('달력 날짜와 일정 글자가 읽기 쉬운 크기이고 오늘 버튼
   if (page.viewportSize()!.width <= 600) {
     await expect(calendar).toHaveClass(/\bbars\b/);
     const first = calendar.locator('.calendar-event').first();
-    await expect(first).toHaveCSS('height', '18px');
-    await expect(first).toHaveCSS('font-size', '12px');
+    await expect(first).toHaveCSS('height', '15px');
+    await expect(first).toHaveCSS('font-size', '11px');
     await expect(calendar.locator('.calendar-event-label').first()).toBeVisible();
   } else await expect(calendar.locator('.calendar-event').first()).toHaveCSS('font-size', '13px');
   // 한빛테크 subscription 10.26–10.27: one label, two cells wide, no placeholder text on day two.
