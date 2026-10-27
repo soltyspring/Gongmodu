@@ -1,5 +1,13 @@
 # 공모두 UI/UX 점검 · 2026-10-26
 
+## 2026-10-27 전체 일정과 문구
+
+- [Npay 비상장](https://ustock.naver.com/service/ipo?schedule=toBeIPOList)은 진행·예정 상태와 마감 날짜를 분리하고, [seohak](https://seohak.kr/ipo)은 오늘 마감과 예정 일정을 나눕니다. [Stock Tracker](https://www.stock-tracker.co.kr/ipo)는 청약일·주관사·공모가·환불일을 함께 보여줍니다. 확인 시점의 화면 구성 참고이며, 외부 정보의 정확성이나 우리 데이터의 전체성을 보증하지 않습니다.
+- 공모두는 확인된 날짜와 증권사를 우선 표시하며 원문에서 확정 여부를 확인하지 못한 금액을 확정 공모가로 표시하지 않습니다. 광고와 실시간 경쟁률은 추가하지 않았습니다. [앱인토스 UI/UX 가이드](https://developers-apps-in-toss.toss.im/design/consumer-ux-guide)와 기존 브랜드 색·글꼴을 유지합니다.
+- 홈은 마감이 빠른 진행 중 청약을 우선하고 시작·마감 날짜에 맞는 문구를 표시합니다. 날짜 단위 공시이므로 '오늘 마감 예정'은 접수 마감 시각을 뜻하지 않으며 상세에서 주관사 접수 시간 확인을 안내합니다.
+- 전체 일정은 상단 날짜와 확인 시각, 부가 설명을 덜고 버튼·검색창·행 크기를 맞췄습니다. 달력 날짜와 오늘 이동은 남겨 일정 탐색을 유지합니다.
+- 실제 데이터로 375·390·768·1440px을 확인했습니다. 전체 일정 검사 FAIL 0, WARN 2: 달력의 11~12px 보조 라벨과 옅은 청약·환불 색상 표시입니다. 종목 전체 이름은 날짜 선택 후 목록에서 확인합니다. 첫 화면 단어 수는 151개에서 128개, 작은 글씨 비율은 73%에서 58%로 측정됐습니다. 홈은 FAIL 0, WARN 1입니다. [전체 일정 화면](screenshots/20261027-calendar.jpg), [홈 화면](screenshots/20261027-friendly-home.jpg).
+
 ## 공식 문서와 적용
 
 - [앱인토스 디자인 도구](https://developers-apps-in-toss.toss.im/design/prepare/design): 375px 기준, Top/ListRow 중심의 구성 권장. 기존 TDS Provider와 버튼을 유지하고 상세 청약 정보에 실제 TDS ListRow를 적용했습니다.
