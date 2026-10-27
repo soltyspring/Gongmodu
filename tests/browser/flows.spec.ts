@@ -17,6 +17,33 @@ async function setup(page: Page) {
   await page.route('**/api/competition', route => route.fulfill({ json: {rows:[],fetchedAt:data.fetchedAt,refreshAfterSeconds:300} }));
 }
 
+test('증권사 색상과 이름을 함께 표시하고 복수 주관사와 미확인을 구분해요', async ({ page }) => {
+  await setup(page); await page.unroute('**/api/schedule');
+  await page.route('**/api/schedule', route => route.fulfill({ json: { ...data, events: [
+    { ...events[0], broker:'iM증권, 삼성증권', priceText:'2,000' },
+    { ...events[2], broker:'새로운증권' },
+    { ...events[4], broker:null },
+  ] } }));
+  await page.goto('/');
+  const featured = page.locator('.featured-panel');
+  await expect(featured.locator('.broker-im')).toHaveText('iM증권');
+  await expect(featured.locator('.broker-samsung')).toHaveText('삼성증권');
+  await expect(featured.locator('.featured-price')).toContainText('2,000원');
+  await page.getByRole('button', { name: '공모가 보러가기' }).click();
+  await expect(page.getByRole('dialog').locator('.detail-subtitle .broker-badge')).toHaveCount(2);
+  await page.getByRole('button', { name:'닫기', exact:true }).click();
+  await expect(page.locator('.broker-neutral').first()).toHaveText('새로운증권');
+  await expect(page.getByText('주관사 원본 확인').first()).toBeVisible();
+});
+
+test('하단에는 투자 안내가 보이고 확인되지 않은 정책 링크는 표시하지 않아요', async ({ page }) => {
+  await setup(page); await page.goto('/');
+  const notice = page.getByRole('region', { name:'이용 안내' });
+  await expect(notice).toContainText('참고용');
+  await expect(notice).toContainText('투자를 권유하거나 특정 종목을 추천하지 않아요');
+  await expect(page.getByRole('link', { name:/개인정보 처리방침/ })).toHaveCount(0);
+});
+
 test('홈 캘린더 → 상세 → 저장 → 새로고침 → 관심 일정', async ({ page }) => {
   await setup(page);
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));

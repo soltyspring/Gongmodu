@@ -492,6 +492,26 @@ dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
 /* TDS-aligned hierarchy: dates stay visible; evidence is optional detail. */
 .event-date { color:var(--text); font-size:14px; font-weight:550; font-variant-numeric:tabular-nums; }
 .event-close { color:var(--text); font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; }
+.broker-badges { display:inline-flex; flex-wrap:wrap; align-items:center; gap:4px; vertical-align:middle; }
+.broker-badge { display:inline-block; border-radius:5px; padding:3px 7px; font-size:13px; font-weight:700; line-height:1.35; white-space:normal; overflow-wrap:anywhere; color:#394556; background:#edf0f3; }
+.broker-im { color:#fff; background:#007764; }
+.broker-samsung { color:#fff; background:#1756a5; }
+.broker-mirae { color:#fff; background:#a44808; }
+.broker-korea { color:#fff; background:#75400f; }
+.broker-nh { color:#fff; background:#0067a8; }
+.broker-kb { color:#473700; background:#ffdf70; }
+.broker-shinhan { color:#fff; background:#174e9b; }
+.broker-kiwoom { color:#fff; background:#9a3c23; }
+.broker-daishin { color:#fff; background:#5e6669; }
+.broker-fallback { color:var(--muted); }
+.event-price, .featured-price { color:var(--muted); font-size:14px; line-height:1.5; }
+.event-price strong, .featured-price strong { color:var(--text); font-weight:650; }
+.featured-price { margin-top:10px; }
+.page-footer .footer-notice { margin-top:22px; padding-top:20px; border-top:1px solid var(--border); }
+.footer-notice h2 { color:var(--text); font-size:15px; font-weight:700; }
+.page-footer .footer-notice p { color:#596576; font-size:13px; line-height:1.65; margin:8px 0 0; word-break:keep-all; }
+.footer-policies { display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:18px; }
+.footer-policies a { display:inline-flex; align-items:center; min-height:44px; color:#596576; font-size:13px; text-decoration:underline; text-underline-offset:3px; }
 .featured-summary { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; margin:12px 0 18px; }
 .featured-summary .featured-date-compact { margin:0; }
 .detail-loading { padding:64px 0; text-align:center; color:var(--muted); font-size:15px; }

@@ -9,6 +9,10 @@ type View = 'home' | 'calendar' | 'saved';
 type Saved = Record<string, ScheduleEvent>;
 const storageKey = 'gongmoa:saved:v2';
 const Button = (props: ComponentProps<typeof TDSButton>) => <TDSButton {...props} className="tds-action" />;
+const policyLinks = [
+  { label:'이용약관', url:import.meta.env.VITE_TERMS_URL },
+  { label:'개인정보 처리방침', url:import.meta.env.VITE_PRIVACY_URL },
+].filter((item): item is { label:string; url:string } => typeof item.url === 'string' && /^https:\/\//.test(item.url));
 const displayPrice = (event: ScheduleEvent) => {
   const price = event.priceText?.trim();
   if (!price) return '아직 확인되지 않았어요';
@@ -50,6 +54,24 @@ function useHash() {
   const [hash, setHash] = useState(location.hash.slice(1) || 'home');
   useEffect(() => { const update = () => setHash(location.hash.slice(1) || 'home'); window.addEventListener('hashchange', update); return () => window.removeEventListener('hashchange', update); }, []);
   return hash;
+}
+// Colours are visual identifiers; the original broker name remains visible.
+function brokerTone(name: string) {
+  const key = name.replace(/주식회사|\(주\)|㈜|\s/g, '').toLowerCase();
+  if (/^(im|아이엠|하이투자)(증권)?$/.test(key)) return 'im';
+  if (/^삼성(증권)?$/.test(key)) return 'samsung';
+  if (/^(미래에셋|미래)(증권)?$/.test(key)) return 'mirae';
+  if (/^(한국투자|한투)(증권)?$/.test(key)) return 'korea';
+  if (/^(nh투자|nh)(증권)?$/.test(key)) return 'nh';
+  if (/^kb(증권)?$/.test(key)) return 'kb';
+  if (/^신한투자?(증권)?$|^신한(증권)?$/.test(key)) return 'shinhan';
+  if (/^키움(증권)?$/.test(key)) return 'kiwoom';
+  if (/^대신(증권)?$/.test(key)) return 'daishin';
+  return 'neutral';
+}
+function BrokerBadges({ broker, fallback }: { broker: string | null | undefined; fallback: string }) {
+  if (!broker?.trim()) return <span className="broker-fallback">{fallback}</span>;
+  return <span className="broker-badges">{broker.split(/[,，]/).map(name => name.trim()).filter(Boolean).map((name, index) => <span className={`broker-badge broker-${brokerTone(name)}`} key={`${name}-${index}`}>{name}</span>)}</span>;
 }
 function Mark({ small = false }: { small?: boolean }) {
   return <span className={`brand-mark ${small ? 'small' : ''}`} aria-hidden="true"><span /><span /><span /></span>;
@@ -179,7 +201,7 @@ export default function App() {
   }
   const eventStatus = (event: ScheduleEvent) => isSubscriptionClosed(event, nowMinute * 60000) ? '청약 마감' : statusLabel(event, today);
   const row = (event: ScheduleEvent, date = true) => <div className="event-row" key={event.id}>
-    <button className="event-open" onClick={() => open(event)}><span className={`event-symbol ${event.kind}`} aria-hidden="true">{kindLabels[event.kind].slice(0, 1)}</span><span className="event-copy"><span className="event-company">{event.company}</span><span className="event-meta">{kindLabels[event.kind]}{event.broker ? ` · ${event.broker}` : ' · 주관사 원본 확인'}{!event.disclosure ? ' · 이전 출처' : ''}</span>{date && <span className="event-date">{dateRange(event)}</span>}{verifiedCloseTime(event) && <span className="event-close">{verifiedCloseTime(event)!.time} 마감</span>}</span><span className={`event-status ${isSubscriptionClosed(event, nowMinute * 60000) ? 'is-closed' : includesDate(event, today) ? 'in-progress' : ''}`}>{eventStatus(event)}</span><ChevronRight className="row-chevron" size={18} /></button>
+    <button className="event-open" onClick={() => open(event)}><span className={`event-symbol ${event.kind}`} aria-hidden="true">{kindLabels[event.kind].slice(0, 1)}</span><span className="event-copy"><span className="event-company">{event.company}</span>{event.kind === 'subscription' && event.priceText && <span className="event-price">공모가 <strong>{displayPrice(event)}</strong></span>}<span className="event-meta">{kindLabels[event.kind]} · <BrokerBadges broker={event.broker} fallback="주관사 원본 확인" />{!event.disclosure ? ' · 이전 출처' : ''}</span>{date && <span className="event-date">{dateRange(event)}</span>}{verifiedCloseTime(event) && <span className="event-close">{verifiedCloseTime(event)!.time} 마감</span>}</span><span className={`event-status ${isSubscriptionClosed(event, nowMinute * 60000) ? 'is-closed' : includesDate(event, today) ? 'in-progress' : ''}`}>{eventStatus(event)}</span><ChevronRight className="row-chevron" size={18} /></button>
     <button className={`save-button ${saved[event.id] ? 'is-saved' : ''}`} aria-label={`${event.company} ${kindLabels[event.kind]} 관심 ${saved[event.id] ? '해제' : '저장'}`} aria-pressed={!!saved[event.id]} onClick={() => toggleSave(event)}><Bookmark size={20} fill={saved[event.id] ? 'currentColor' : 'none'} /></button>
   </div>;
 
@@ -198,7 +220,8 @@ export default function App() {
       {loading && !data ? <div className="loading-grid" aria-busy="true" aria-label="공모주 일정을 불러오고 있어요"><div className="skeleton main-skeleton" /><div className="skeleton calendar-skeleton" /><p>저장된 일정을 불러오고 있어요</p></div> : !data && error ? <Empty title="일정을 다시 불러와 주세요" text="연결 후 공모주 일정을 확인할 수 있어요." action={<Button onClick={() => void refresh()}>다시 불러오기</Button>} /> : <>
       {view === 'home' && <div className="home-layout subscription-first">
           <section className="featured-panel panel"><div className="section-heading"><h2>{featuredHeading}</h2>{featured && <div className="featured-controls"><button className={`save-button ${saved[featured.id] ? 'is-saved' : ''}`} aria-label={`가까운 청약 ${saved[featured.id] ? '관심 해제' : '관심 저장'}`} aria-pressed={!!saved[featured.id]} onClick={() => toggleSave(featured)}><Bookmark size={21} fill={saved[featured.id] ? 'currentColor' : 'none'} /></button></div>}</div>{featured ? <>
-            <button className="featured-company" onClick={() => open(featured)}>{featured.company}<ChevronRight size={20} /></button><p className="featured-broker">{featured.broker || '주관사는 공시에서 확인해 주세요'}</p>
+            <button className="featured-company" onClick={() => open(featured)}>{featured.company}<ChevronRight size={20} /></button><div className="featured-broker"><BrokerBadges broker={featured.broker} fallback="주관사는 공시에서 확인해 주세요" /></div>
+            {featured.priceText && <p className="featured-price">공모가 <strong>{displayPrice(featured)}</strong></p>}
             <div className="featured-summary"><div className="featured-period"><span>청약일</span><strong>{dateRange(featured)}</strong></div><div className="featured-refund"><span>환불일</span><strong>{featuredRefund ? shortDate(featuredRefund) : '공시 확인 전'}</strong></div></div>
             <p className="closing-time">{featuredClose ? `${featuredClose.time} 마감 · 공시 기준` : '마감시간은 주관사에서 확인해 주세요'}</p>
             <Button size="large" display="full" onClick={() => open(featured)}>공모가 보러가기</Button>
@@ -217,11 +240,11 @@ export default function App() {
       </>}
       {view === 'saved' && <><div className="saved-toolbar"><div className="segmented"><button className={savedFilter === 'upcoming' ? 'selected' : ''} aria-pressed={savedFilter === 'upcoming'} onClick={() => setSavedFilter('upcoming')}>예정된 일정</button><button className={savedFilter === 'all' ? 'selected' : ''} aria-pressed={savedFilter === 'all'} onClick={() => setSavedFilter('all')}>전체</button></div><span className="quiet-label">{savedVisible.length}개 일정</span></div><div className="saved-layout"><section className="panel saved-list">{savedVisible.length ? savedVisible.map(e => row(e)) : <Empty title={savedFilter === 'upcoming' && savedEvents.length ? '저장한 일정이 모두 종료됐어요' : '기억해 둘 공모주를 모아보세요'} text={savedEvents.length ? '전체를 누르면 이전에 저장한 일정을 볼 수 있어요.' : '일정 옆 책갈피를 누르면 여기에 모아드려요.'} action={<Button variant="weak" onClick={() => go('calendar')}>공모주 일정 둘러보기</Button>} />}</section></div></>}
       </>}
-      <footer className="page-footer"><p className="collection-note">공시 일정은 6시간마다 업데이트해요.</p><div><Mark small /><strong>공모두</strong><span>공시로 확인하는 청약 일정</span></div><p>DART 증권신고서를 바탕으로 제공해요. 청약 전 주관사 공지와 공시를 확인해 주세요.</p><button className="refresh-button" onClick={() => void refresh()} disabled={loading} aria-label="일정 새로고침"><RefreshCw size={14} className={loading ? 'spinning' : ''} />{loading ? '불러오는 중' : '일정 새로고침'}</button><button onClick={() => go(`${view}/guide/1`)}>데이터 출처 및 이용 안내 <ExternalLink size={12} /></button></footer>
+      <footer className="page-footer"><p className="collection-note">공시 일정은 6시간마다 업데이트해요.</p><div><Mark small /><strong>공모두</strong><span>공시로 확인하는 청약 일정</span></div><p>DART 증권신고서를 바탕으로 제공해요. 청약 전 주관사 공지와 공시를 확인해 주세요.</p><button className="refresh-button" onClick={() => void refresh()} disabled={loading} aria-label="일정 새로고침"><RefreshCw size={14} className={loading ? 'spinning' : ''} />{loading ? '불러오는 중' : '일정 새로고침'}</button><button onClick={() => go(`${view}/guide/1`)}>데이터 출처 및 이용 안내 <ExternalLink size={12} /></button><section className="footer-notice" aria-label="이용 안내"><h2>이용 전 확인해 주세요</h2><p>공모두의 정보는 참고용이에요. 청약하기 전 최신 공시와 증권사 안내를 꼭 확인해 주세요.</p><p>공모두는 투자를 권유하거나 특정 종목을 추천하지 않아요. 투자 판단은 충분히 살펴본 뒤 직접 결정해 주세요.</p></section>{policyLinks.length > 0 && <nav className="footer-policies" aria-label="이용약관 및 개인정보 처리방침">{policyLinks.map(link => <a key={link.label} href={link.url} target="_blank" rel="noreferrer">{link.label}<span className="sr-only"> (외부 페이지)</span></a>)}</nav>}</footer>
     </main>
     <nav className="mobile-nav" aria-label="하단 메뉴">{tabs.map(({ id, label, icon: Icon }) => <a key={id} href={`#${id}`} className={view === id ? 'active' : ''} aria-current={view === id ? 'page' : undefined}><Icon size={21} strokeWidth={view === id ? 2.3 : 1.7} /><span>{label}</span></a>)}</nav>
     {route[1] === 'event' && <Sheet title={active?.company || '일정 상세'} onClose={closeSheet}>{active ? <>
-      <div className="detail-eyebrow"><span className={`kind-label ${active.kind}`}>{kindLabels[active.kind]}</span><span>{eventStatus(active)}</span></div><h2 className="detail-title">{active.company}</h2><p className="detail-subtitle">{active.broker || '주관사는 원본 일정을 확인해 주세요'}</p>
+      <div className="detail-eyebrow"><span className={`kind-label ${active.kind}`}>{kindLabels[active.kind]}</span><span>{eventStatus(active)}</span></div><h2 className="detail-title">{active.company}</h2><div className="detail-subtitle"><BrokerBadges broker={active.broker} fallback="주관사는 원본 일정을 확인해 주세요" /></div>
       {activeDateEvidence?.basis==='broker-announcement' && <p className="small-note">이 날짜의 출처는 증권사 공개 안내예요. 예정 일정은 변경될 수 있어요.</p>}
       {!events.some(e => e.id === active.id) && <div className="notice"><Info size={17} />기기에 저장한 일정이에요. 최신 일정은 원본을 확인해 주세요.</div>}
       <section className="detail-price" aria-label="공모가 정보"><h3>공모가 정보</h3><strong>{displayPrice(active)}</strong></section>
