@@ -511,7 +511,12 @@ dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
 .footer-notice h2 { color:var(--text); font-size:15px; font-weight:700; }
 .page-footer .footer-notice p { color:#596576; font-size:13px; line-height:1.65; margin:8px 0 0; word-break:keep-all; }
 .footer-policies { display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:18px; }
-.footer-policies a { display:inline-flex; align-items:center; min-height:44px; color:#596576; font-size:13px; text-decoration:underline; text-underline-offset:3px; }
+.footer-policies button { display:inline-flex; align-items:center; min-height:44px; color:#596576; font-size:13px; text-decoration:underline; text-underline-offset:3px; }
+.policy-document { padding-bottom:24px; }
+.policy-date { color:var(--muted); font-size:13px; margin-top:8px; }
+.policy-document section { margin-top:22px; }
+.policy-document h3 { color:var(--text); font-size:16px; font-weight:700; }
+.policy-document section p { color:#4b596a; font-size:15px; line-height:1.7; margin-top:7px; word-break:keep-all; }
 .featured-summary { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; margin:12px 0 18px; }
 .featured-summary .featured-date-compact { margin:0; }
 .detail-loading { padding:64px 0; text-align:center; color:var(--muted); font-size:15px; }

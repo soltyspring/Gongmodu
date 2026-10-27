@@ -20,6 +20,12 @@ for (const timezone of ['Asia/Seoul', 'UTC', 'America/New_York']) {
     } finally { if (before === undefined) delete process.env.TZ; else process.env.TZ = before; }
   });
 }
+test('환불·상장일에는 청약 마감 대신 일정 종류를 표시한다', () => {
+  const [subscription] = parseSchedule(calendar(event('a', '20261026', '20261028')));
+  assert.equal(statusLabel({ ...subscription, kind:'refund' }, '2026-10-27'), '오늘 환불');
+  assert.equal(statusLabel({ ...subscription, kind:'listing' }, '2026-10-27'), '오늘 상장');
+  assert.equal(statusLabel(subscription, '2026-10-27'), '오늘 마감');
+});
 test('UTC 시각은 한국 날짜에 배치하고, 자정에 끝나는 일정은 다음 날에 표시하지 않음', () => {
   const [e] = parseSchedule(calendar('BEGIN:VEVENT\r\nUID:timed\r\nDTSTART:20261025T160000Z\r\nDTEND:20261026T150000Z\r\nSUMMARY:(상장) 테스트기업\r\nEND:VEVENT'));
   assert.equal(e.start, '2026-10-26'); assert.equal(e.end, '2026-10-27');

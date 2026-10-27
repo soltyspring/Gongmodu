@@ -9,10 +9,6 @@ type View = 'home' | 'calendar' | 'saved';
 type Saved = Record<string, ScheduleEvent>;
 const storageKey = 'gongmoa:saved:v2';
 const Button = (props: ComponentProps<typeof TDSButton>) => <TDSButton {...props} className="tds-action" />;
-const policyLinks = [
-  { label:'이용약관', url:import.meta.env.VITE_TERMS_URL },
-  { label:'개인정보 처리방침', url:import.meta.env.VITE_PRIVACY_URL },
-].filter((item): item is { label:string; url:string } => typeof item.url === 'string' && /^https:\/\//.test(item.url));
 const displayPrice = (event: ScheduleEvent) => {
   const price = event.priceText?.trim();
   if (!price) return '아직 확인되지 않았어요';
@@ -78,6 +74,24 @@ function Mark({ small = false }: { small?: boolean }) {
 }
 function Empty({ title, text, action }: { title: string; text: string; action?: ReactNode }) {
   return <div className="empty-state"><CalendarDays size={28} strokeWidth={1.5} /><h3>{title}</h3><p>{text}</p>{action}</div>;
+}
+function PolicyDocument({ kind }: { kind:'terms'|'privacy' }) {
+  const sections = kind === 'terms' ? [
+    ['서비스 안내', '블루씨엘이 운영하는 공모두는 공시를 바탕으로 공모주 청약과 관련된 일정을 참고용으로 제공해요. 청약 주문을 접수하거나 투자 권유 또는 종목 추천을 하지 않아요.'],
+    ['정보를 이용할 때', '공시 정정이나 수집 시점에 따라 정보가 늦게 반영되거나 일부 누락될 수 있어요. 청약 전에 최신 공시와 주관 증권사의 안내를 확인하고 투자 여부를 직접 결정해 주세요.'],
+    ['관심 일정과 준비 기록', '관심 일정과 청약 준비 기록은 사용 중인 기기에 저장돼요. 기기를 변경하거나 앱 데이터를 삭제하면 기록이 사라질 수 있어요. 관심 저장은 청약 신청이나 자동 알림을 뜻하지 않아요.'],
+    ['서비스 변경과 문의', '서비스 내용이 바뀌거나 점검으로 일시 중단될 수 있어요. 중요한 변경 사항은 공모두 화면에서 알려드릴게요. 문의는 bluecl@bluecl.cloud로 보내 주세요.'],
+    ['약관 변경', '약관을 변경하면 시행 전에 앱에서 변경 내용과 시행일을 안내해요. 이용자의 권리에 중대한 영향을 미치는 변경은 충분한 기간을 두고 안내해요.'],
+  ] : [
+    ['운영자와 문의', '공모두는 블루씨엘이 운영해요. 개인정보에 관한 문의와 열람·정정·삭제·처리정지 요청은 bluecl@bluecl.cloud로 보내 주세요.'],
+    ['기기에 저장하는 정보', '관심 일정과 청약 준비 기록은 사용 중인 기기의 로컬 저장소에 저장돼요. 공모두 서버로 해당 기록을 전송하지 않아요. 기기에서 앱 데이터를 삭제하면 기록도 삭제될 수 있어요.'],
+    ['접속 기록', '일정을 불러올 때 서버에 IP 주소, 접속 시각, 요청 방식과 경로, 응답 상태·크기, 처리 시간, 브라우저 또는 기기 정보가 기록될 수 있어요. 서비스 운영과 장애·보안 확인에 이용하며 서버 설정상 일 단위로 순환하고 14일을 기준으로 삭제해요.'],
+    ['문의 정보', '이메일로 문의하면 발신 이메일 주소와 문의 내용, 답변 내용을 처리해요. 문의가 해결되면 관련 법령에 따른 보관이 필요한 경우를 제외하고 지체 없이 삭제해요.'],
+    ['메일 서비스와 국외 처리', '문의 메일은 Cloudflare 이메일 전달을 거쳐 Google Gmail에서 처리해요. 발신 주소와 메일 내용은 전달·보관 과정에서 국외 서버에서 처리될 수 있어요. 자세한 사항은 각 서비스의 개인정보 처리방침을 확인하거나 블루씨엘에 문의해 주세요.'],
+    ['정보 보호와 요청', '블루씨엘은 접근 권한을 제한하고 HTTPS 통신을 사용해 정보를 보호해요. 개인정보 관련 요청과 불편 사항은 위 이메일로 접수하며 관련 법령에 따라 처리해요.'],
+    ['처리방침 변경', '처리방침이 변경되면 앱에서 변경 내용과 적용 시점을 안내해요.'],
+  ];
+  return <article className="policy-document"><h2 className="detail-title">{kind === 'terms' ? '이용약관' : '개인정보 처리방침'}</h2><p className="policy-date">작성일 2026년 10월 27일</p>{sections.map(([title, text]) => <section key={title}><h3>{title}</h3><p>{text}</p></section>)}</article>;
 }
 function Sheet({ title, children, onClose, wide = false }: { title: string; children: ReactNode; onClose: () => void; wide?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -240,7 +254,7 @@ export default function App() {
       </>}
       {view === 'saved' && <><div className="saved-toolbar"><div className="segmented"><button className={savedFilter === 'upcoming' ? 'selected' : ''} aria-pressed={savedFilter === 'upcoming'} onClick={() => setSavedFilter('upcoming')}>예정된 일정</button><button className={savedFilter === 'all' ? 'selected' : ''} aria-pressed={savedFilter === 'all'} onClick={() => setSavedFilter('all')}>전체</button></div><span className="quiet-label">{savedVisible.length}개 일정</span></div><div className="saved-layout"><section className="panel saved-list">{savedVisible.length ? savedVisible.map(e => row(e)) : <Empty title={savedFilter === 'upcoming' && savedEvents.length ? '저장한 일정이 모두 종료됐어요' : '기억해 둘 공모주를 모아보세요'} text={savedEvents.length ? '전체를 누르면 이전에 저장한 일정을 볼 수 있어요.' : '일정 옆 책갈피를 누르면 여기에 모아드려요.'} action={<Button variant="weak" onClick={() => go('calendar')}>공모주 일정 둘러보기</Button>} />}</section></div></>}
       </>}
-      <footer className="page-footer"><p className="collection-note">공시 일정은 6시간마다 업데이트해요.</p><div><Mark small /><strong>공모두</strong><span>공시로 확인하는 청약 일정</span></div><p>DART 증권신고서를 바탕으로 제공해요. 청약 전 주관사 공지와 공시를 확인해 주세요.</p><button className="refresh-button" onClick={() => void refresh()} disabled={loading} aria-label="일정 새로고침"><RefreshCw size={14} className={loading ? 'spinning' : ''} />{loading ? '불러오는 중' : '일정 새로고침'}</button><button onClick={() => go(`${view}/guide/1`)}>데이터 출처 및 이용 안내 <ExternalLink size={12} /></button><section className="footer-notice" aria-label="이용 안내"><h2>이용 전 확인해 주세요</h2><p>공모두의 정보는 참고용이에요. 청약하기 전 최신 공시와 증권사 안내를 꼭 확인해 주세요.</p><p>공모두는 투자를 권유하거나 특정 종목을 추천하지 않아요. 투자 판단은 충분히 살펴본 뒤 직접 결정해 주세요.</p></section>{policyLinks.length > 0 && <nav className="footer-policies" aria-label="이용약관 및 개인정보 처리방침">{policyLinks.map(link => <a key={link.label} href={link.url} target="_blank" rel="noreferrer">{link.label}<span className="sr-only"> (외부 페이지)</span></a>)}</nav>}</footer>
+      <footer className="page-footer"><p className="collection-note">공시 일정은 6시간마다 업데이트해요.</p><div><Mark small /><strong>공모두</strong><span>공시로 확인하는 청약 일정</span></div><p>DART 증권신고서를 바탕으로 제공해요. 청약 전 주관사 공지와 공시를 확인해 주세요.</p><button className="refresh-button" onClick={() => void refresh()} disabled={loading} aria-label="일정 새로고침"><RefreshCw size={14} className={loading ? 'spinning' : ''} />{loading ? '불러오는 중' : '일정 새로고침'}</button><button onClick={() => go(`${view}/guide/1`)}>데이터 출처 및 이용 안내 <ExternalLink size={12} /></button><section className="footer-notice" aria-label="이용 안내"><h2>이용 전 확인해 주세요</h2><p>공모두의 정보는 참고용이에요. 청약하기 전 최신 공시와 증권사 안내를 꼭 확인해 주세요.</p><p>공모두는 투자를 권유하거나 특정 종목을 추천하지 않아요. 투자 판단은 충분히 살펴본 뒤 직접 결정해 주세요.</p></section><nav className="footer-policies" aria-label="이용약관 및 개인정보 처리방침"><button onClick={() => go(`${view}/policy/terms`)}>이용약관</button><button onClick={() => go(`${view}/policy/privacy`)}>개인정보 처리방침</button></nav></footer>
     </main>
     <nav className="mobile-nav" aria-label="하단 메뉴">{tabs.map(({ id, label, icon: Icon }) => <a key={id} href={`#${id}`} className={view === id ? 'active' : ''} aria-current={view === id ? 'page' : undefined}><Icon size={21} strokeWidth={view === id ? 2.3 : 1.7} /><span>{label}</span></a>)}</nav>
     {route[1] === 'event' && <Sheet title={active?.company || '일정 상세'} onClose={closeSheet}>{active ? <>
@@ -257,6 +271,7 @@ export default function App() {
       <div className="detail-actions"><Button display="full" size="large" variant={saved[active.id] ? 'weak' : 'fill'} aria-label={`${active.company} 상세 관심 ${saved[active.id] ? '해제' : '저장'}`} aria-pressed={!!saved[active.id]} onClick={() => toggleSave(active)}><Bookmark size={19} fill={saved[active.id] ? 'currentColor' : 'none'} /> {saved[active.id] ? '관심 일정에서 해제하기' : '관심 일정에 저장하기'}</Button>{active.disclosure && <a className="detail-source" href={active.disclosure.sourceUrl} target="_blank" rel="noreferrer">DART 공시 원문 보기 <ExternalLink size={15} /><span className="sr-only"> (외부 페이지)</span></a>}</div>
     </> : loading ? <div className="detail-loading" role="status" aria-busy="true">저장된 일정을 불러오고 있어요</div> : error && !data ? <Empty title="일정을 다시 불러와 주세요" text="연결 후 상세 일정을 확인할 수 있어요." action={<Button onClick={() => void refresh()}>다시 불러오기</Button>} /> : <Empty title="이 일정을 찾을 수 없어요" text="일정이 변경됐을 수 있어요. 전체 일정에서 다시 확인해 주세요." action={<Button onClick={closeSheet}>일정으로 돌아가기</Button>} />}</Sheet>}
     {route[1] === 'guide' && <Sheet title="공모두 이용 안내" onClose={closeSheet}><div className="guide-tabs">{guides.map((g, i) => <button className={Number(route[2] || 0) === i ? 'active' : ''} key={g.eyebrow} onClick={() => go(`${view}/guide/${i}`)}>{g.eyebrow}</button>)}</div>{(() => { const guide = guides[Number(route[2])] || guides[0]; return <><h2 className="detail-title">{guide.title}</h2><p className="guide-intro">{guide.intro}</p><div className="guide-steps">{guide.steps.map(([title, text], i) => <div key={title}><span>{i + 1}</span><div><h3>{title}</h3><p>{text}</p></div></div>)}</div>{guide === guides[1] && <a className="source-external" href={data?.source.url || 'https://dart.fss.or.kr/dsac008/main.do'} target="_blank" rel="noreferrer">DART 청약 달력에서 직접 확인하기 <ExternalLink size={16} /></a>}<Button display="full" size="large" onClick={closeSheet}>확인했어요</Button></>; })()}</Sheet>}
+    {route[1] === 'policy' && (route[2] === 'terms' || route[2] === 'privacy') && <Sheet title={route[2] === 'terms' ? '이용약관' : '개인정보 처리방침'} onClose={closeSheet}><PolicyDocument kind={route[2]} /><Button display="full" size="large" onClick={closeSheet}>확인했어요</Button></Sheet>}
     {toast && <div className="toast" role="status"><Check size={18} />{toast}</div>}
   </div>;
 }

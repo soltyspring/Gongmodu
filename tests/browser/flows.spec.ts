@@ -36,12 +36,17 @@ test('증권사 색상과 이름을 함께 표시하고 복수 주관사와 미�
   await expect(page.getByText('주관사 원본 확인').first()).toBeVisible();
 });
 
-test('하단에는 투자 안내가 보이고 확인되지 않은 정책 링크는 표시하지 않아요', async ({ page }) => {
+test('하단 투자 안내와 이용약관·개인정보 처리방침을 확인해요', async ({ page }) => {
   await setup(page); await page.goto('/');
   const notice = page.getByRole('region', { name:'이용 안내' });
   await expect(notice).toContainText('참고용');
   await expect(notice).toContainText('투자를 권유하거나 특정 종목을 추천하지 않아요');
-  await expect(page.getByRole('link', { name:/개인정보 처리방침/ })).toHaveCount(0);
+  await page.getByRole('button', { name:'이용약관', exact:true }).click();
+  await expect(page.getByRole('dialog', { name:'이용약관' })).toContainText('블루씨엘');
+  await page.getByRole('button', { name:'닫기', exact:true }).click();
+  await page.getByRole('button', { name:'개인정보 처리방침', exact:true }).click();
+  await expect(page.getByRole('dialog', { name:'개인정보 처리방침' })).toContainText('Cloudflare');
+  await expect(page.getByRole('dialog', { name:'개인정보 처리방침' })).toContainText('bluecl@bluecl.cloud');
 });
 
 test('홈 캘린더 → 상세 → 저장 → 새로고침 → 관심 일정', async ({ page }) => {

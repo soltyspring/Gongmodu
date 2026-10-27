@@ -83,7 +83,11 @@ export function dateRange(event: ScheduleEvent) {
 }
 export function statusLabel(event: ScheduleEvent, today: string) {
   if (event.end <= today) return '종료';
-  if (includesDate(event, today)) return lastDay(event) === today ? '오늘 마감' : '진행 중';
+  if (includesDate(event, today)) {
+    if (event.kind === 'refund') return '오늘 환불';
+    if (event.kind === 'listing') return '오늘 상장';
+    return lastDay(event) === today ? '오늘 마감' : '진행 중';
+  }
   const diff = dayDiff(today, event.start);
   return diff === 1 ? '내일' : `D-${diff}`;
 }
