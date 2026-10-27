@@ -4,6 +4,7 @@ import { assignLanes, calendarCells, changeMonth, dateKey, dateRange, dayDiff, i
 import { closeNative, connectNative, isNativeToss, openExternal, reportNeedsAd, showReportAd } from './platform';
 import { PreparationChecklist } from './PreparationChecklist';
 import { FactsFallback, type Fact } from './detail-facts';
+import { OfferingResults } from './OfferingResults';
 
 type View = 'home' | 'calendar' | 'saved';
 type Saved = Record<string, ScheduleEvent>;
@@ -302,6 +303,7 @@ export default function App() {
       {activeDateEvidence?.basis==='broker-announcement' && <p className="small-note">증권사 공개 안내 기준이라 바뀔 수 있어요.</p>}
       {!events.some(e => e.id === active.id) && <div className="notice"><Info size={17} />기기에 저장한 일정이에요. 최신 일정은 원본을 확인해 주세요.</div>}
       <section className="detail-price" aria-label="공모가 정보"><h3>공모가</h3><strong>{displayPrice(active)}</strong></section>
+      <OfferingResults event={active} />
       <section className="detail-section detail-facts" aria-labelledby="detail-schedule-heading"><h3 id="detail-schedule-heading">일정</h3>
         <Suspense fallback={<FactsFallback facts={facts} />}><DetailFacts facts={facts} /></Suspense>
         {active.kind === 'subscription' && !activeClose && <p className="closing-time detail-closing-time">보통 마지막 날 16:00 마감 · 증권사마다 달라요</p>}

@@ -2,6 +2,7 @@ import { Check, ChevronRight } from 'lucide-react';
 import FinancialChart from './FinancialChart';
 import { companyReport } from './company-report';
 import type { Fact } from './detail-facts';
+import { OfferingResults } from './OfferingResults';
 import { companyReferences, type ScheduleEvent } from '../shared/schedule';
 
 /** A one-screen IPO brief: offer terms, headline numbers, derived facts, business, trend, sources. */
@@ -18,6 +19,8 @@ export default function CompanyInfo({event, facts, price}:{event:ScheduleEvent; 
       {event.broker && <p className="report-broker">{event.broker} 주관</p>}
       <dl className="report-offer">{offer.map(item=><div key={item.label}><dt>{item.label}</dt><dd className={item.known?'':'is-unknown'}>{item.value}</dd></div>)}</dl>
     </header>
+
+    <OfferingResults event={event} />
 
     {report.kpis.length>0&&<section className="report-card" aria-labelledby="report-kpi"><div className="report-card-head"><h3 id="report-kpi">실적 한눈에</h3><span>{report.period} · {summary!.scope}</span></div>
       <div className="report-kpis">{report.kpis.map(kpi=><div className="report-kpi" key={kpi.label}><span>{kpi.label}</span><strong className={`tone-${kpi.tone}`}>{kpi.value}</strong>{kpi.note&&<small className={`tone-${kpi.tone}`}>{kpi.note}</small>}</div>)}</div>

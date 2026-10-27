@@ -3,6 +3,7 @@ import { createDartClient, DartError, type DartDocument } from './client.ts';
 import { documentGroups, latestOfferings, normalizeOffering, originalDate, parseDartDates } from './normalize.ts';
 import { brokerKey, disclosedDates, disclosedSubscriptionClose, fullOffering, offeringScope, offeringTerms, resultsReportListing, type DetailSource } from './details.ts';
 import { summarizeCompany } from './company.ts';
+import { demandForecast, subscriptionResult } from './offering-results.ts';
 
 export const DART_SOURCE = { name: 'DART 증권신고서', url: 'https://dart.fss.or.kr/dsac008/main.do' };
 export async function collectDartSchedule(options: { key: string; fetcher?: typeof fetch; now?: () => number; lookbackDays?: number; delayMs?: number; progress?: (done: number, total: number) => void }): Promise<ScheduleResponse> {
@@ -83,7 +84,18 @@ export async function collectDartSchedule(options: { key: string; fetcher?: type
           return candidate;
         };
         disclosure.refund=inherit('refund');disclosure.listing=inherit('listing');
-        // After subscription the issue-results report gives the actual trading start date.
+        // Book-building result: the final-terms filing of this lineage (filed a day or two before subscription).
+        disclosure.demand=null;
+        if(/발행조건확정/.test(report.report_nm)) disclosure.demand=demandForecast(document,report.rcept_no);
+        else if(event.start<=addDays(end,10) && addDays(event.end,-1)>=addDays(end,-60)) {
+          const finals=(await client.reports(disclosure.originalFiledOn,end,corp)).filter(r=>r.corp_code===corp && r.rcept_no<report.rcept_no && /발행조건확정/.test(r.report_nm) && /증권신고서\s*\(지분증권\)/.test(r.report_nm) && !/철회/.test(r.report_nm)).sort((a,b)=>b.rcept_no.localeCompare(a.rcept_no));
+          for(const filed of finals.slice(0,1)) {
+            try { disclosure.demand=demandForecast(await client.document(filed.rcept_no),filed.rcept_no); }
+            catch(error) { if(!(error instanceof DartError) || error.code!=='DART_014')throw error; }
+          }
+        }
+        // After subscription the issue-results report gives the actual trading start date and retail results.
+        disclosure.subscriptionResult=null;
         const last=addDays(event.end,-1);
         if(last<=end && last>=addDays(end,-60)) {
           const reports=(await client.resultsReports(corp,event.start,end)).filter(r=>r.rcept_dt>=event.start.replaceAll('-','') && r.rcept_dt<=addDays(last,20).replaceAll('-','')).sort((a,b)=>b.rcept_no.localeCompare(a.rcept_no));
@@ -91,6 +103,7 @@ export async function collectDartSchedule(options: { key: string; fetcher?: type
             let results: DartDocument;
             try { results=await client.document(filed.rcept_no); }
             catch(error) { if(error instanceof DartError && error.code==='DART_014')continue;throw error; }
+            disclosure.subscriptionResult??=subscriptionResult(results,filed.rcept_no);
             const found=resultsReportListing(results.text);
             if(!found || found.date<last || found.date>addDays(last,60))continue;
             disclosure.listing={...found,receiptNo:filed.rcept_no,sourceUrl:`https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${filed.rcept_no}`,basis:'explicit'};

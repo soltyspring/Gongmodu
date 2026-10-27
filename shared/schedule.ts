@@ -12,6 +12,15 @@ export interface CompanySummary {
   unit:string|null; scope:string; receiptNo:string; sourceUrl:string;
 }
 export interface CompanyReference { company:string; sourceName:'IRGO'; sourceUrl:string; fetchedAt:string }
+/** Institutional book-building result from the final-terms filing. Shares are 0–1 ratios. */
+export interface DemandForecast {
+  ratio:number; participants:number; band:{low:number;high:number}|null;
+  aboveUpperShare:number|null; committedShare:number|null; receiptNo:string; sourceUrl:string;
+}
+/** Retail subscription result from the issue-results report. Shares are 0–1 ratios. */
+export interface SubscriptionResult {
+  ratio:number; applicants:number; equalSharesPerApplicant:number; committedShare:number|null; receiptNo:string; sourceUrl:string;
+}
 export interface BrokerTerms {
   broker: string; allocatedShares: number | null; equalShares: number | null;
   marginRate: number | null; minShares: number | null; limitShares: number | null;
@@ -33,6 +42,8 @@ export interface DartDisclosure {
   subscriptionClose?: SubscriptionClose | null;
   companySummary?: CompanySummary;
   companyReferences?: CompanyReference[];
+  demand?: DemandForecast | null;
+  subscriptionResult?: SubscriptionResult | null;
   terms?: OfferingTerms;
 }
 export interface ScheduleEvent {
@@ -104,6 +115,18 @@ export function companyReferences(event:ScheduleEvent):CompanyReference[] {
     if(reference.company!==event.company||reference.sourceName!=='IRGO'||!Number.isFinite(Date.parse(reference.fetchedAt)))return false;
     try{const url=new URL(reference.sourceUrl);return url.origin==='https://m.irgo.co.kr'&&/^\/IPO자료\/\d+\/(?:TB|IC)\//.test(decodeURI(url.pathname));}catch{return false;}
   }).slice(0,2);
+}
+const share = (v: unknown) => v === null || (typeof v === 'number' && v >= 0 && v <= 1);
+const dartSource = (v: { receiptNo?: unknown; sourceUrl?: unknown }) => typeof v.receiptNo === 'string' && /^\d{14}$/.test(v.receiptNo) && v.sourceUrl === `https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${v.receiptNo}`;
+const positive = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v > 0;
+/** Validated book-building and subscription results; anything malformed is dropped, not shown. */
+export function offeringResults(event: ScheduleEvent): { demand: DemandForecast | null; result: SubscriptionResult | null } {
+  const d = event.kind === 'subscription' ? event.disclosure?.demand : undefined;
+  const r = event.kind === 'subscription' ? event.disclosure?.subscriptionResult : undefined;
+  const demand = d && dartSource(d) && positive(d.ratio) && positive(d.participants) && share(d.aboveUpperShare) && share(d.committedShare)
+    && (d.band === null || (positive(d.band?.low) && positive(d.band?.high) && d.band!.low < d.band!.high)) ? d : null;
+  const result = r && dartSource(r) && positive(r.ratio) && positive(r.applicants) && typeof r.equalSharesPerApplicant === 'number' && r.equalSharesPerApplicant >= 0 && share(r.committedShare) ? r : null;
+  return { demand, result };
 }
 /** Only a verified source-bound deadline can end a subscription before its exclusive end date. */
 export function verifiedCloseTime(event: ScheduleEvent): SubscriptionClose | null {

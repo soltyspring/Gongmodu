@@ -474,3 +474,28 @@ test('일정 없는 날은 한 번만 안내하고 다음 일정 날짜로 바�
   await expect(page.getByRole('heading', { name: '2026년 11월' })).toBeVisible();
   await expect(page.locator('.selected-list')).toContainText('다음기업');
 });
+
+test('수요예측·청약 결과 카드는 공시 수치를 보여주고 값이 없거나 잘못되면 숨겨요', async ({ page }) => {
+  await setup(page); await page.unroute('**/api/schedule');
+  const src = (no: string) => ({ receiptNo: no, sourceUrl: `https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${no}` });
+  const demand = { ratio: 1248.47, participants: 2323, band: { low: 10000, high: 12000 }, aboveUpperShare: 0.9897, committedShare: 0.0365, ...src('20260911000209') };
+  const subscriptionResult = { ratio: 1477.65, applicants: 165616, equalSharesPerApplicant: 1.21, committedShare: 0.5561, ...src('20260917000071') };
+  const withResults = { ...events[0], disclosure: { ...events[0].disclosure, demand, subscriptionResult } };
+  const broken = { ...events[2], disclosure: { ...events[2].disclosure, demand: { ...demand, sourceUrl: 'https://example.com' }, subscriptionResult: null } };
+  await page.route('**/api/schedule', r => r.fulfill({ json: { ...data, events: [withResults, broken] } }));
+  await page.goto('/#home/event/a');
+  const dialog = page.getByRole('dialog');
+  const book = dialog.getByRole('region', { name: '기관 수요예측' });
+  await expect(book).toContainText('1,248.47 : 1'); await expect(book).toContainText('2,323건 참여');
+  await expect(book).toContainText('99%'); await expect(book).toContainText('희망 공모가 10,000~12,000원'); await expect(book).toContainText('3.7%');
+  await expect(book.getByRole('link', { name: /공시/ })).toHaveAttribute('href', demand.sourceUrl);
+  const sub = dialog.getByRole('region', { name: '청약 결과' });
+  await expect(sub).toContainText('1,477.65 : 1'); await expect(sub).toContainText('165,616건 청약'); await expect(sub).toContainText('평균 1.21주'); await expect(sub).toContainText('56%');
+  await dialog.getByRole('button', { name: '기업 리포트 보기' }).click();
+  await expect(page.getByRole('dialog', { name: '기업 리포트' }).getByRole('region', { name: '기관 수요예측' })).toContainText('1,248.47 : 1');
+  await page.goto(`/#home/event/${encodeURIComponent(events[2].id)}`);
+  await expect(page.getByRole('dialog').getByRole('heading', { name: events[2].company, exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog').getByRole('region', { name: '기관 수요예측' })).toHaveCount(0);
+  await expect(page.getByRole('dialog').getByRole('region', { name: '청약 결과' })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
