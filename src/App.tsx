@@ -111,20 +111,35 @@ function Sheet({ title, children, onClose, wide = false, report = false }: { tit
 function MonthHeading({ month, onMonth, onToday }: { month: string; onMonth: (delta: number) => void; onToday?: () => void }) {
   return <div className="calendar-heading"><h2>{month.slice(0, 4)}년 {Number(month.slice(5))}월</h2><div className="month-controls">{onToday && <button className="today-button" onClick={onToday}>오늘</button>}<button className="icon-button" aria-label="이전 달" onClick={() => onMonth(-1)}><ChevronLeft size={20} /></button><button className="icon-button" aria-label="다음 달" onClick={() => onMonth(1)}><ChevronRight size={20} /></button></div></div>;
 }
+function useNarrow(query = '(max-width: 600px)') {
+  const [narrow, setNarrow] = useState(() => matchMedia(query).matches);
+  useEffect(() => { const list = matchMedia(query); const update = () => setNarrow(list.matches); list.addEventListener('change', update); return () => list.removeEventListener('change', update); }, [query]);
+  return narrow;
+}
+/** Empty day: say it once, then offer the next date that has something on it. */
+function NoDayEvents({ day, today, events, onSelect }: { day: string; today: string; events: ScheduleEvent[]; onSelect: (date: string) => void }) {
+  const next = events.filter(e => e.start > day).sort((a, b) => a.start.localeCompare(b.start) || a.company.localeCompare(b.company, 'ko'))[0];
+  return <div className="day-empty"><p>{day === today ? '오늘은 일정이 없어요' : `${shortDate(day)}에는 일정이 없어요`}</p>
+    {next && <button className="day-next" onClick={() => onSelect(next.start)}><span className="day-next-label">다음 일정</span><span className="day-next-text"><strong>{shortDate(next.start)}</strong> {calendarName(next.company)} {kindLabels[next.kind]}</span><ChevronRight size={18} aria-hidden="true" /></button>}
+  </div>;
+}
 function Calendar({ month, selected, events, today, onSelect, onMonth, compact = false, overview = false, showToday = false }: { month: string; selected: string; events: ScheduleEvent[]; today: string; onSelect: (date: string) => void; onMonth: (delta: number) => void; compact?: boolean; overview?: boolean; showToday?: boolean }) {
   const cells = calendarCells(month);
   const lanes = assignLanes(events.filter(e => e.start <= cells.at(-1)! && e.end > cells[0]));
-  return <div className={`calendar ${compact ? 'compact' : ''} ${overview ? 'overview' : ''}`}>
+  // Under 600px a 50px cell cannot hold a readable name: draw colour bars, names live in the day list.
+  const bars = useNarrow();
+  const lanesShown = bars ? 3 : 2;
+  return <div className={`calendar ${compact ? 'compact' : ''} ${overview ? 'overview' : ''} ${bars ? 'bars' : ''}`}>
     <MonthHeading month={month} onMonth={onMonth} onToday={showToday ? () => onSelect(today) : undefined} />
     <div className="calendar-weekdays">{weekdays.map((day, i) => <span key={day} className={i === 0 ? 'sunday' : ''}>{day}</span>)}</div>
     <div className="calendar-grid">{cells.map(day => {
       const dayEvents = lanes.filter(({ event }) => includesDate(event, day));
       return <button key={day} className={`calendar-day ${day.slice(0, 7) !== month ? 'outside' : ''} ${day === selected ? 'selected' : ''} ${day === today ? 'today' : ''}`} aria-label={`${day}, 일정 ${dayEvents.length}개`} aria-pressed={day === selected} onClick={() => onSelect(day)}>
         <span className="day-number">{Number(day.slice(8))}</span>
-        {compact ? <span className="day-dots">{[...new Set(dayEvents.map(x => x.event.kind))].slice(0, 3).map(kind => <i key={kind} className={`dot ${kind}`} />)}</span> : <span className="day-events">{[0, 1].map(lane => {
+        {compact ? <span className="day-dots">{[...new Set(dayEvents.map(x => x.event.kind))].slice(0, 3).map(kind => <i key={kind} className={`dot ${kind}`} />)}</span> : <span className="day-events">{Array.from({ length: lanesShown }, (_, lane) => {
           const e = dayEvents.find(x => x.lane === lane)?.event;
           return e ? <span key={lane} className={`calendar-event ${e.kind} ${e.start === day ? 'starts' : ''} ${lastDay(e) === day ? 'ends' : ''}`} title={e.title}>{e.start === day || new Date(`${day}T12:00:00Z`).getUTCDay() === 0 ? calendarName(e.company) : '　'}</span> : <span className="event-spacer" key={lane} />;
-        })}{dayEvents.some(x => x.lane > 1) && <span className="more-events">+{dayEvents.filter(x => x.lane > 1).length}</span>}</span>}
+        })}{dayEvents.some(x => x.lane >= lanesShown) && <span className="more-events">+{dayEvents.filter(x => x.lane >= lanesShown).length}</span>}</span>}
       </button>;
     })}</div>
     <div className="calendar-legend">{(['subscription', 'listing', 'refund', 'other'] as const).filter(kind => lanes.some(({ event }) => event.kind === kind)).map(kind => <span key={kind}><i className={`dot ${kind}`} />{kindLabels[kind]}</span>)}</div>
@@ -262,14 +277,14 @@ export default function App() {
         <section className="panel calendar-panel home-calendar" aria-label="홈 공모주 캘린더">
           <Calendar month={month} selected={selected} events={events} today={today} onSelect={selectDate} onMonth={moveMonth} overview />
           <div className="home-day-heading"><h3>{selected===today?'오늘 일정':`${shortDate(selected)} 일정`}</h3><button className="text-button" onClick={() => { setCalendarMode('month'); go('calendar'); }}>전체 일정 <ChevronRight size={16} /></button></div>
-          <div className="home-day-list">{events.filter(e => includesDate(e, selected)).length ? events.filter(e => includesDate(e, selected)).map(e => row(e, false)) : <p className="home-day-empty">이날은 등록된 일정이 없어요.</p>}</div>
+          <div className="home-day-list">{events.filter(e => includesDate(e, selected)).length ? events.filter(e => includesDate(e, selected)).map(e => row(e, false)) : <NoDayEvents day={selected} today={today} events={events} onSelect={selectDate} />}</div>
         </section>
           <section className="upcoming-section"><div className="section-heading"><h2>다가오는 일정 <span className="heading-count">{upcoming.length}</span></h2><button className="text-button" onClick={() => { setCalendarMode('list'); go('calendar'); }}>전체 보기 <ChevronRight size={16} /></button></div>{nextSaved && <button className="saved-return" onClick={() => go('saved')}><Bookmark size={18} /><span><strong>내 관심 일정</strong><span>{nextSaved.company} · {dateRange(nextSaved)}</span></span><ChevronRight size={18} /></button>}<div className="panel event-list">{upcoming.length ? upcoming.slice(0, 4).map(e => row(e)) : <Empty title="예정된 일정이 아직 없어요" text="전체 일정에서 이전 기록을 확인할 수 있어요." />}</div></section>
       </div>}
       {view === 'calendar' && <>
         <div className="calendar-toolbar"><label className="search-field"><Search size={19} /><input aria-label="종목명 또는 증권사 검색" placeholder="종목명·증권사 검색" value={query} onChange={e => setQuery(e.target.value)} />{query && <button aria-label="검색어 지우기" onClick={() => setQuery('')}><X size={16} /></button>}</label><div className="segmented" aria-label="일정 보기 방식"><button className={calendarMode === 'month' ? 'selected' : ''} aria-pressed={calendarMode === 'month'} onClick={() => setCalendarMode('month')}>달력</button><button className={calendarMode === 'list' ? 'selected' : ''} aria-pressed={calendarMode === 'list'} onClick={() => setCalendarMode('list')}>목록</button></div></div>
         <div className="filters"><div className="filter-buttons">{(['all', ...new Set(events.map(e => e.kind))] as const).map(kind => <button key={kind} className={filter === kind ? 'active' : ''} aria-pressed={filter === kind} onClick={() => setFilter(kind)}>{kind === 'all' ? '전체' : kindLabels[kind]}</button>)}</div><label className="spac-filter"><input type="checkbox" checked={hideSpac} onChange={e => setHideSpac(e.target.checked)} />스팩 제외</label></div>
-        <div className={`schedule-layout ${calendarMode === 'list' ? 'list-mode' : ''}`}><section className="panel calendar-panel">{calendarMode === 'month' ? <Calendar month={month} selected={selected} events={monthEvents} today={today} onSelect={selectDate} onMonth={moveMonth} showToday /> : <><MonthHeading month={month} onMonth={moveMonth} onToday={() => selectDate(today)} /><div className="month-list-caption">조건에 맞는 일정 {monthEvents.length}개</div>{monthEvents.length ? monthEvents.map(e => row(e)) : <Empty title="조건에 맞는 일정이 없어요" text="다른 달이나 검색어로 다시 찾아보세요." />}</>}</section>{calendarMode === 'month' && <section className="selected-day-panel"><div className="section-heading"><h2>{shortDate(selected)} <span>{weekdays[new Date(`${selected}T12:00:00Z`).getUTCDay()]}요일</span></h2><span className="quiet-label">{selectedEvents.length}개 일정</span></div><div className="panel selected-list">{selectedEvents.length ? selectedEvents.map(e => row(e, false)) : <Empty title="이날은 등록된 일정이 없어요" text="표시가 있는 날짜를 눌러 확인해 보세요." />}</div></section>}</div>
+        <div className={`schedule-layout ${calendarMode === 'list' ? 'list-mode' : ''}`}><section className="panel calendar-panel">{calendarMode === 'month' ? <Calendar month={month} selected={selected} events={monthEvents} today={today} onSelect={selectDate} onMonth={moveMonth} showToday /> : <><MonthHeading month={month} onMonth={moveMonth} onToday={() => selectDate(today)} /><div className="month-list-caption">조건에 맞는 일정 {monthEvents.length}개</div>{monthEvents.length ? monthEvents.map(e => row(e)) : <Empty title="조건에 맞는 일정이 없어요" text="다른 달이나 검색어로 다시 찾아보세요." />}</>}</section>{calendarMode === 'month' && <section className="selected-day-panel"><div className="section-heading"><h2>{shortDate(selected)} <span>{weekdays[new Date(`${selected}T12:00:00Z`).getUTCDay()]}요일</span></h2>{selectedEvents.length > 0 && <span className="quiet-label">{selectedEvents.length}개 일정</span>}</div><div className="panel selected-list">{selectedEvents.length ? selectedEvents.map(e => row(e, false)) : <NoDayEvents day={selected} today={today} events={filtered} onSelect={selectDate} />}</div></section>}</div>
       </>}
       {view === 'saved' && <><div className="saved-toolbar"><div className="segmented"><button className={savedFilter === 'upcoming' ? 'selected' : ''} aria-pressed={savedFilter === 'upcoming'} onClick={() => setSavedFilter('upcoming')}>예정된 일정</button><button className={savedFilter === 'all' ? 'selected' : ''} aria-pressed={savedFilter === 'all'} onClick={() => setSavedFilter('all')}>전체</button></div><span className="quiet-label">{savedVisible.length}개 일정</span></div><div className="saved-layout"><section className="panel saved-list">{savedVisible.length ? savedVisible.map(e => row(e)) : <Empty title={savedFilter === 'upcoming' && savedEvents.length ? '저장한 일정이 모두 종료됐어요' : '기억해 둘 공모주를 모아보세요'} text={savedEvents.length ? '전체를 누르면 이전에 저장한 일정을 볼 수 있어요.' : '일정 옆 책갈피를 누르면 여기에 모아드려요.'} action={<Button variant="weak" onClick={() => go('calendar')}>공모주 일정 둘러보기</Button>} />}</section></div></>}
       </>}

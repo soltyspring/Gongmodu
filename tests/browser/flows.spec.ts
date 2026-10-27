@@ -187,7 +187,12 @@ test('달력 날짜와 일정 글자가 읽기 쉬운 크기이고 오늘 버튼
   await setup(page); await page.goto('/#calendar');
   const calendar = page.locator('.schedule-layout .calendar');
   await expect(calendar.locator('.day-number').first()).toHaveCSS('font-size', '16px');
-  await expect(calendar.locator('.calendar-event').first()).toHaveCSS('font-size', '13px');
+  // Wide screens show names; phones show colour bars and keep names in the selected-day list.
+  if (page.viewportSize()!.width <= 600) {
+    await expect(calendar).toHaveClass(/\bbars\b/);
+    await expect(calendar.locator('.calendar-event').first()).toHaveCSS('height', '5px');
+    await expect(calendar.locator('.calendar-event').first()).toHaveCSS('font-size', '0px');
+  } else await expect(calendar.locator('.calendar-event').first()).toHaveCSS('font-size', '13px');
   await expect(calendar.locator('.calendar-weekdays')).toHaveCSS('font-size', '14px');
   const today = calendar.getByRole('button', { name: '오늘', exact: true });
   expect((await today.boundingBox())!.height).toBeGreaterThanOrEqual(44);
@@ -443,4 +448,21 @@ test('기업 리포트는 공모 개요·실적 KPI·핵심 포인트·원문을
   await expect(report.getByRole('region',{name:'핵심 포인트'})).toContainText('2025년에 영업이익이 흑자로 바뀌었어요.');
   await expect(report.getByRole('link',{name:/요약에 사용한 증권신고서/})).toHaveAttribute('href',summary.sourceUrl);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('일정 없는 날은 한 번만 안내하고 다음 일정 날짜로 바로 이동해요', async ({ page }) => {
+  await setup(page); await page.goto('/');
+  const home = page.getByRole('region', { name: '홈 공모주 캘린더' });
+  await expect(home.locator('.home-day-heading h3')).toHaveText('오늘 일정');
+  await expect(home.locator('.day-empty > p')).toHaveText('오늘은 일정이 없어요');
+  await expect(home).not.toContainText('이날은');
+  await home.getByRole('button', { name: /다음 일정 10\.26 한빛테크/ }).click();
+  await expect(home.locator('.home-day-heading h3')).toHaveText('10.26 일정');
+  await expect(home.locator('.home-day-list .event-row')).toHaveCount(2);
+  await page.goto('/#calendar');
+  await page.getByRole('button', { name: '2026-10-30, 일정 0개', exact: true }).click();
+  await expect(page.locator('.selected-list .day-empty > p')).toHaveText('10.30에는 일정이 없어요');
+  await page.locator('.selected-list').getByRole('button', { name: /다음 일정 11\.2 다음기업/ }).click();
+  await expect(page.getByRole('heading', { name: '2026년 11월' })).toBeVisible();
+  await expect(page.locator('.selected-list')).toContainText('다음기업');
 });
