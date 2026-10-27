@@ -40,6 +40,11 @@ test('하단 투자 안내와 이용약관·개인정보 처리방침을 확인�
   await setup(page); await page.goto('/');
   const notice = page.getByRole('region', { name:'이용 안내' });
   await expect(notice).toContainText('참고용');
+  const footer = page.locator('.page-footer');
+  await expect(footer).not.toContainText('6시간마다 업데이트');
+  await expect(footer).not.toContainText('DART 증권신고서');
+  await expect(footer.getByRole('button', {name:'일정 새로고침'})).toHaveCount(0);
+  await expect(footer.getByRole('button', {name:'데이터 출처 및 이용 안내'})).toHaveCount(0);
   await expect(notice).toContainText('투자를 권유하거나 특정 종목을 추천하지 않아요');
   await page.getByRole('button', { name:'이용약관', exact:true }).click();
   await expect(page.getByRole('dialog', { name:'이용약관' })).toContainText('블루씨엘');
@@ -177,7 +182,7 @@ test('확인한 마감시간에 새로고침 없이 청약 마감으로 바뀌�
   await expect(page.getByRole('dialog')).toContainText('16:00 마감 · 공시 기준');
   await page.route('**/api/schedule',route=>route.fulfill({json:{...data,events:[first]}}));
   await page.reload();
-  await expect(page.getByRole('dialog')).toContainText('마감시간은 주관사에서 확인해 주세요');
+  await expect(page.getByRole('dialog')).toContainText('보통 청약 마지막 날 16:00에 마감해요. 정확한 시간은 주관사에서 확인해 주세요.');
   await expect(page.getByRole('dialog')).not.toContainText('16:00 마감');
   await expect(page.getByRole('dialog')).not.toContainText('청약 마감');
 });
@@ -215,7 +220,7 @@ test('직접 상세 진입, Escape 닫기, 브라우저 뒤로 가기, 안내', 
   await page.getByRole('button', { name: '목록', exact: true }).click();
   await page.locator('.event-open').first().click();
   await page.goBack(); await expect(page.getByRole('dialog')).toHaveCount(0);
-  await page.getByRole('button', { name: '데이터 출처 및 이용 안내' }).click();
+  await page.goto('/#calendar/guide/1');
   await expect(page.getByRole('dialog')).toContainText('DART 증권신고서를 읽어와요');
   await page.getByRole('button', { name: '관심 일정 안내', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('자동 푸시 알림을 보내지 않아요');
@@ -233,10 +238,9 @@ test('조회 장애는 재시도하고 오래된 정상 데이터는 경고 없�
   await expect(page.getByText('새로운 청약을 기다리고 있어요')).toBeVisible();
   await page.unroute('**/api/schedule');
   await page.route('**/api/schedule', route => route.fulfill({ json: { ...data, stale: true } }));
-  await page.getByRole('button', { name: '일정 새로고침' }).click();
+  await page.reload();
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(page.locator('.featured-company')).toContainText('한빛테크');
-  await expect(page.getByRole('button', {name:'일정 새로고침'})).toHaveText('일정 새로고침');
 });
 
 test('주관사 미확인은 누락 안내와 원문 확인 동선을 표시', async ({ page }) => {
@@ -353,11 +357,10 @@ test('화면을 열어 두거나 조회가 실패해도 자동 재수집 요청�
   expect(calls).toBe(initial);
   await page.unroute('**/api/schedule');
   await page.route('**/api/schedule', route => { calls++; return route.fulfill({status:503,json:{code:'DART_SYNCING'}}); });
-  await page.getByRole('button',{name:'일정 새로고침'}).click();
-  await expect(page.getByRole('button',{name:'일정 새로고침'})).toBeEnabled();
-  const afterManual=calls;
+  await page.reload();
+  await expect(page.getByRole('alert')).toBeVisible();
+  const afterFailure=calls;
   await page.clock.fastForward(60000);
-  expect(calls).toBe(afterManual);
-  await expect(page.locator('.featured-company')).toContainText('한빛테크');
-  await expect(page.getByRole('alert')).toHaveCount(0);
+  expect(calls).toBe(afterFailure);
+  await expect(page.getByRole('button', {name:'다시 불러오기'})).toBeVisible();
 });
