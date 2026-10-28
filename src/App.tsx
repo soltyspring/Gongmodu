@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, t
 import { Bookmark, CalendarDays, Check, ChevronLeft, ChevronRight, CircleHelp, ExternalLink, Home, Info, Search, X } from 'lucide-react';
 import { assignLanes, calendarCells, changeMonth, dateKey, dateRange, dayDiff, includesDate, isScheduleEvent, isSubscriptionClosed, kindLabels, offeringResults, lastDay, shortDate, statusLabel, verifiedCloseTime, type EventKind, type ScheduleEvent, type ScheduleResponse } from '../shared/schedule';
 import { closeNative, connectNative, isNativeToss, openExternal, reportNeedsAd, showReportAd } from './platform';
-import { PreparationChecklist } from './PreparationChecklist';
 import { FactsFallback, type Fact } from './detail-facts';
 import { OfferingResults } from './OfferingResults';
 
@@ -37,7 +36,6 @@ const guides = [
   ] },
   { title: '관심 일정은 이 기기에 저장해요', eyebrow: '관심 일정 안내', intro: '로그인 없이 바로 모아볼 수 있어요.', steps: [
     ['책갈피를 눌러 저장해요', '한 번 더 누르면 해제해요.'],
-    ['청약 준비를 체크해요', '상세에서 확인한 항목을 체크해 두세요. 정정 공시가 나오면 새로 확인해요.'],
     ['저장과 알림은 달라요', '관심 저장은 자동 푸시 알림을 보내지 않아요. 앱 데이터를 지우면 목록도 지워질 수 있어요.'],
   ] },
 ];
@@ -82,12 +80,12 @@ function PolicyDocument({ kind }: { kind:'terms'|'privacy' }) {
   const sections = kind === 'terms' ? [
     ['서비스 안내', '블루씨엘이 운영하는 공모두는 공시를 바탕으로 공모주 청약과 관련된 일정을 참고용으로 제공해요. 청약 주문을 접수하거나 투자 권유 또는 종목 추천을 하지 않아요.'],
     ['정보를 이용할 때', '공시 정정이나 수집 시점에 따라 정보가 늦게 반영되거나 일부 누락될 수 있어요. 청약 전에 최신 공시와 주관 증권사의 안내를 확인하고 투자 여부를 직접 결정해 주세요.'],
-    ['관심 일정과 준비 기록', '관심 일정과 청약 준비 기록은 사용 중인 기기에 저장돼요. 기기를 변경하거나 앱 데이터를 삭제하면 기록이 사라질 수 있어요. 관심 저장은 청약 신청이나 자동 알림을 뜻하지 않아요.'],
+    ['관심 일정', '관심 일정은 사용 중인 기기에 저장돼요. 기기를 변경하거나 앱 데이터를 삭제하면 기록이 사라질 수 있어요. 관심 저장은 청약 신청이나 자동 알림을 뜻하지 않아요.'],
     ['서비스 변경과 문의', '서비스 내용이 바뀌거나 점검으로 일시 중단될 수 있어요. 중요한 변경 사항은 공모두 화면에서 알려드릴게요. 문의는 bluecl@bluecl.cloud로 보내 주세요.'],
     ['약관 변경', '약관을 변경하면 시행 전에 앱에서 변경 내용과 시행일을 안내해요. 이용자의 권리에 중대한 영향을 미치는 변경은 충분한 기간을 두고 안내해요.'],
   ] : [
     ['운영자와 문의', '공모두는 블루씨엘이 운영해요. 개인정보에 관한 문의와 열람·정정·삭제·처리정지 요청은 bluecl@bluecl.cloud로 보내 주세요.'],
-    ['기기에 저장하는 정보', '관심 일정과 청약 준비 기록은 사용 중인 기기의 로컬 저장소에 저장돼요. 공모두 서버로 해당 기록을 전송하지 않아요. 기기에서 앱 데이터를 삭제하면 기록도 삭제될 수 있어요.'],
+    ['기기에 저장하는 정보', '관심 일정은 사용 중인 기기의 로컬 저장소에 저장돼요. 공모두 서버로 해당 기록을 전송하지 않아요. 기기에서 앱 데이터를 삭제하면 기록도 삭제될 수 있어요.'],
     ['접속 기록', '일정을 불러올 때 서버에 IP 주소, 접속 시각, 요청 방식과 경로, 응답 상태·크기, 처리 시간, 브라우저 또는 기기 정보가 기록될 수 있어요. 서비스 운영과 장애·보안 확인에 이용하며 서버 설정상 일 단위로 순환하고 14일을 기준으로 삭제해요.'],
     ['문의 정보', '이메일로 문의하면 발신 이메일 주소와 문의 내용, 답변 내용을 처리해요. 문의가 해결되면 관련 법령에 따른 보관이 필요한 경우를 제외하고 지체 없이 삭제해요.'],
     ['메일 서비스와 국외 처리', '문의 메일은 Cloudflare 이메일 전달을 거쳐 Google Gmail에서 처리해요. 발신 주소와 메일 내용은 전달·보관 과정에서 국외 서버에서 처리될 수 있어요. 자세한 사항은 각 서비스의 개인정보 처리방침을 확인하거나 블루씨엘에 문의해 주세요.'],
@@ -313,7 +311,6 @@ export default function App() {
         <Suspense fallback={<FactsFallback facts={facts} />}><DetailFacts facts={facts} /></Suspense>
         {active.kind === 'subscription' && !activeClose && <p className="closing-time detail-closing-time">보통 마지막 날 16:00 마감 · 증권사마다 달라요</p>}
       </section>
-      {active.kind === 'subscription' && <PreparationChecklist key={active.id} event={active} />}
       <div className="detail-actions bottom-cta">{active.disclosure && <a className="app-action weak" href={active.disclosure.sourceUrl} target="_blank" rel="noreferrer" aria-label="DART 공시 원문 보기 (외부 페이지)">공시 원문</a>}<Button className="cta-main" disabled={opening} onClick={() => void openReport(active)}>{opening ? '광고를 불러오고 있어요' : adGate ? '광고 보고 기업 리포트 열기' : '기업 리포트 보기'}</Button></div>
     </> : loading ? <div className="detail-loading" role="status" aria-busy="true">저장된 일정을 불러오고 있어요</div> : error && !data ? <Empty title="일정을 다시 불러와 주세요" text="연결 후 상세 일정을 확인할 수 있어요." action={<Button onClick={() => void refresh()}>다시 불러오기</Button>} /> : <Empty title="이 일정을 찾을 수 없어요" text="일정이 변경됐을 수 있어요. 전체 일정에서 다시 확인해 주세요." action={<Button onClick={closeSheet}>일정으로 돌아가기</Button>} />}</Sheet>}
     {route[1] === 'guide' && <Sheet title="공모두 이용 안내" onClose={closeSheet}><div className="guide-tabs">{guides.map((g, i) => <button className={Number(route[2] || 0) === i ? 'active' : ''} key={g.eyebrow} onClick={() => go(`${view}/guide/${i}`)}>{g.eyebrow}</button>)}</div>{(() => { const guide = guides[Number(route[2])] || guides[0]; return <><h2 className="detail-title">{guide.title}</h2><p className="guide-intro">{guide.intro}</p><div className="guide-steps">{guide.steps.map(([title, text], i) => <div key={title}><span>{i + 1}</span><div><h3>{title}</h3><p>{text}</p></div></div>)}</div>{guide === guides[1] && <a className="source-external" href={data?.source.url || 'https://dart.fss.or.kr/dsac008/main.do'} target="_blank" rel="noreferrer">DART 청약 달력에서 직접 확인하기 <ExternalLink size={16} /></a>}<Button display="full" size="large" onClick={closeSheet}>확인했어요</Button></>; })()}</Sheet>}

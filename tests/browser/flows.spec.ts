@@ -130,19 +130,13 @@ test('홈 캘린더 → 상세 → 저장 → 새로고침 → 관심 일정', a
   expect(errors).toEqual([]);
 });
 
-test('홈 빠른 저장과 청약 준비 기록을 다시 방문해 확인하고 정정 시 새로 시작', async ({ page }) => {
+test('홈 빠른 저장 후 상세에는 청약 준비 체크를 두지 않아요', async ({ page }) => {
   await setup(page); await page.goto('/');
   await page.getByRole('button', { name: '가까운 청약 관심 저장', exact: true }).click();
   await expect(page.getByRole('button', { name: /내 관심 일정 한빛테크/ })).toBeVisible();
   await page.getByRole('button', { name: '청약 정보 확인하기' }).click();
-  const checklist = page.getByRole('region', { name: '나의 청약 준비' });
-  await checklist.getByRole('checkbox', { name: /계좌와 청약 자격/ }).check();
-  await expect(checklist.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
-  await page.reload();
-  await expect(checklist.getByRole('checkbox', { name: /계좌와 청약 자격/ })).toBeChecked();
-  await page.route('**/api/schedule', route => route.fulfill({ json: { ...data, events: events.map(event => ({ ...event, disclosure: { ...event.disclosure, receiptNo: '20261026000123', sourceUrl:'https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20261026000123' } })) } }));
-  await page.reload();
-  await expect(checklist.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
+  await expect(page.getByRole('dialog')).toContainText('한빛테크');
+  await expect(page.getByRole('region', { name: '나의 청약 준비' })).toHaveCount(0);
   await expect(page.getByRole('complementary', { name: '광고', exact: true })).toHaveCount(0);
 });
 
