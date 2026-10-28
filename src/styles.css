@@ -996,3 +996,17 @@ button:active:not(:disabled) { transform:translateY(1px); }
 .notice button { background:var(--raised); }
 .app-shell .detail-actions.bottom-cta { background:var(--surface); }
 .sheet.is-report .detail-actions.bottom-cta { background:var(--ground); }
+
+/* Design C (chosen): neutral surfaces, the brand green only on the primary button and the selected
+   date. Calendar bars are plain grey with a small kind-coloured dot before each name. */
+.calendar-event.subscription { --kind:var(--accent); }
+.calendar-event.listing { --kind:var(--listing); }
+.calendar-event.refund { --kind:var(--refund); }
+.calendar-event.other { --kind:#8b95a1; }
+.calendar .calendar-event,.calendar .calendar-event.starts,.calendar .calendar-event.ends,.calendar .calendar-event.starts.ends,
+.calendar.bars .calendar-event.subscription,.calendar.bars .calendar-event.listing,.calendar.bars .calendar-event.refund,
+.overview .calendar-event.subscription,.overview .calendar-event.listing,.overview .calendar-event.refund { background:var(--raised); color:#333d4b; font-weight:600; box-shadow:none; }
+.calendar-event-label::before { content:''; display:inline-block; width:6px; height:6px; margin-right:4px; border-radius:50%; background:var(--kind); vertical-align:1px; }
+.calendar-event.starts .calendar-event-label { padding-left:4px; }
+.calendar-day.selected .day-number,.calendar-day.selected:hover .day-number { background:var(--accent); color:#fff; }
+.calendar-day.selected:active .day-number { background:var(--accent-dark); color:#fff; }
