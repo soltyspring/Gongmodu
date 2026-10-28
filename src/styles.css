@@ -948,3 +948,15 @@ button:active:not(:disabled) { transform:translateY(1px); }
 .calendar-day.today .day-number { box-shadow:none; color:var(--accent-dark); font-weight:700; }
 .calendar-day.selected .day-number,.calendar-day.selected:hover .day-number { background:var(--accent-pale); color:var(--accent-dark); font-weight:700; box-shadow:none; }
 .calendar-day.selected:active .day-number { background:var(--accent-weak-press); color:var(--accent-dark); opacity:1; }
+
+/* Calendar bars: soft tints with dark same-hue text instead of solid fills. A 3px stripe on the
+   first day carries the kind colour, so types stay distinguishable without a wall of saturation. */
+.calendar-event.subscription,.overview .calendar-event.subscription,.calendar.bars .calendar-event.subscription { background:#e3f2ed; color:#075c50; }
+.calendar-event.listing,.overview .calendar-event.listing,.calendar.bars .calendar-event.listing { background:#e9eef9; color:#364f8d; }
+.calendar-event.refund,.overview .calendar-event.refund,.calendar.bars .calendar-event.refund { background:#f5efe2; color:#6d521d; }
+.calendar-event.other,.calendar.bars .calendar-event.other { background:var(--raised); color:var(--muted); }
+.calendar-event.starts.subscription { box-shadow:inset 3px 0 0 var(--accent); }
+.calendar-event.starts.listing { box-shadow:inset 3px 0 0 var(--listing); }
+.calendar-event.starts.refund { box-shadow:inset 3px 0 0 var(--refund); }
+.calendar-event.starts .calendar-event-label { padding-left:6px; }
+.calendar.bars .calendar-event { font-weight:600; }
