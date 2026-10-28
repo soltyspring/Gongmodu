@@ -35,6 +35,6 @@ export function companyReport(summary: CompanySummary): ReportFacts {
   }
   return { period: year ? label(year.period) : null, kpis, insights };
 }
-// '2025년(제29기)' reads as '2025년' in a sentence; the chart keeps the filing's full label.
-const label = (period: string) => period.replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+// '2025년(제29기)' reads as '2025년' in a sentence; '제12기(2025년)' also reads as '2025년'.
+const label = (period: string) => { const p = financialPeriod(period); return p.year.endsWith('년') ? `${p.year}${p.suffix ? ` ${p.suffix}` : ''}` : period.replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim(); };
 const percent = (value: number) => `${value.toLocaleString('ko-KR', { maximumFractionDigits: value < 10 ? 1 : 0 })}%`;

@@ -43,3 +43,12 @@ test('문장 속 기간은 공시의 기수 표기를 빼고 읽기 쉽게 써�
   assert.equal(report.kpis[0].note,'2024년보다 ▲ 20%');
   assert.deepEqual(report.insights,['2025년에 영업이익이 흑자로 바뀌었어요.','2026년 반기 영업이익은 10억원이에요.']);
 });
+
+test('기수가 앞에 오는 공시 기간도 연도로 읽어요', () => {
+  const report = companyReport({...base,financials:[
+    {period:'제12기(2025년)',revenue:'13,850,000',operatingProfit:'4,510,000',netIncome:'1,810,000',accounting:null},
+    {period:'제11기(2024년)',revenue:'10,000,000',operatingProfit:'(100,000)',netIncome:null,accounting:null},
+  ]});
+  assert.equal(report.period,'2025년');
+  assert.equal(report.kpis[0].note,'2024년보다 ▲ 39%');
+});
