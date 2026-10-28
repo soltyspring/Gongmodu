@@ -140,6 +140,21 @@ test('홈 빠른 저장 후 상세에는 청약 준비 체크를 두지 않아�
   await expect(page.getByRole('complementary', { name: '광고', exact: true })).toHaveCount(0);
 });
 
+test('토스 하단 안전 영역이 있어도 상세 하단 버튼이 화면 안에 보여요', async ({ page }, info) => {
+  test.skip(info.project.name !== 'mobile', '모바일 시트 전용');
+  await setup(page); await page.goto('/');
+  await page.evaluate(() => document.documentElement.style.setProperty('--safe-bottom', '34px'));
+  await page.getByRole('button', { name: '청약 정보 확인하기' }).click();
+  const viewport = page.viewportSize()!;
+  for (const target of [page.getByRole('link', { name: /DART 공시 원문 보기/ }), page.getByRole('button', { name: '기업 리포트 보기' })]) {
+    const box = (await target.boundingBox())!;
+    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height - 34);
+  }
+  await page.getByRole('button', { name: '기업 리포트 보기' }).click();
+  const back = (await page.getByRole('button', { name: '일정으로 돌아가기' }).boundingBox())!;
+  expect(back.y + back.height).toBeLessThanOrEqual(viewport.height - 34);
+});
+
 test('DART 숫자 공모가에 원을 표시하고 중복 안내를 숨겨요', async ({ page }) => {
   await setup(page); await page.unroute('**/api/schedule');
   await page.route('**/api/schedule', route => route.fulfill({ json: { ...data, events: [{ ...events[0], priceText: '2,000' }] } }));

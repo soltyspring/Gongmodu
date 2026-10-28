@@ -427,7 +427,7 @@ dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
   .main-skeleton { height: 410px; }
   .calendar-skeleton { height: 160px; }
   .sheet { position: fixed; inset: auto 0 0; margin: 0; width: 100%; max-width: 100%; max-height: 94dvh; border-radius: 24px 24px 0 0; }
-  .sheet-inner { padding: 10px 24px calc(24px + env(safe-area-inset-bottom, 0px)); }
+  .sheet-inner { padding: 10px 24px calc(24px + var(--safe-bottom, env(safe-area-inset-bottom, 0px))); }
   .sheet-handle { display: block; width: 32px; height: 4px; background: #d5dce1; border-radius: 4px; margin: 0 auto 4px; }
   .sheet-top { margin-bottom: 12px; }
   .detail-title { font-size: 25px; }
@@ -567,7 +567,7 @@ dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
   .save-button { width:44px; margin-right:0; }
   .mobile-nav a { font-size:12px; }
   .search-field input { font-size:14px; }
-  .detail-actions { bottom:calc(-24px - env(safe-area-inset-bottom,0px)); padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)); }
+  .detail-actions { bottom:0; padding-bottom:calc(12px + var(--safe-bottom, env(safe-area-inset-bottom,0px))); }
   .guide-tabs { overflow-x:auto; }
   .guide-tabs button { font-size:12px; white-space:nowrap; }
   .page-topline { font-size:12px; flex-wrap:wrap; }
@@ -860,7 +860,7 @@ button:active:not(:disabled) { transform:translateY(1px); }
 .report-disclaimer { padding:4px 8px 0; font-size:13px; line-height:1.6; color:var(--subtle); word-break:keep-all; }
 .sheet.is-report .detail-actions.bottom-cta { background:linear-gradient(to bottom, rgba(242,244,246,0), var(--ground) 20px); }
 @media (max-width:600px) {
-  .app-shell .detail-actions.bottom-cta { bottom:calc(-24px - env(safe-area-inset-bottom,0px)); margin:20px -24px calc(-24px - env(safe-area-inset-bottom,0px)); padding:16px 24px calc(16px + env(safe-area-inset-bottom,0px)); }
+  .app-shell .detail-actions.bottom-cta { bottom:0; margin:20px -24px calc(-24px - var(--safe-bottom, env(safe-area-inset-bottom,0px))); padding:16px 24px calc(16px + var(--safe-bottom, env(safe-area-inset-bottom,0px))); }
   .sheet.is-report .sheet-top { margin:-10px -24px 0; padding:6px 12px 0; top:-10px; }
   .report-title { font-size:26px; }
   .report-card { padding:20px 18px; }
