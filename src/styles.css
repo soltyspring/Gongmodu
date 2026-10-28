@@ -960,3 +960,19 @@ button:active:not(:disabled) { transform:translateY(1px); }
 .calendar-event.starts.refund { box-shadow:inset 3px 0 0 var(--refund); }
 .calendar-event.starts .calendar-event-label { padding-left:6px; }
 .calendar.bars .calendar-event { font-weight:600; }
+
+/* Depth on the whole bar instead of a left stripe: a thin same-hue outline that wraps the bar
+   (top/bottom on every day, left on the first, right on the last) plus a 1px lift underneath. */
+.calendar-event.subscription { --bar-line:rgba(8,127,112,.32); }
+.calendar-event.listing { --bar-line:rgba(66,98,171,.32); }
+.calendar-event.refund { --bar-line:rgba(134,107,48,.32); }
+.calendar-event.other { --bar-line:rgba(78,89,104,.22); }
+.calendar-event,.calendar-event.starts.subscription,.calendar-event.starts.listing,.calendar-event.starts.refund {
+  box-shadow:inset 0 1px 0 var(--bar-line,transparent), inset 0 -1px 0 var(--bar-line,transparent), 0 1px 0 rgba(0,23,51,.06);
+}
+.calendar-event.starts,.calendar-event.starts.subscription,.calendar-event.starts.listing,.calendar-event.starts.refund {
+  box-shadow:inset 1px 0 0 var(--bar-line,transparent), inset 0 1px 0 var(--bar-line,transparent), inset 0 -1px 0 var(--bar-line,transparent), 0 1px 0 rgba(0,23,51,.06);
+}
+.calendar-event.ends { box-shadow:inset -1px 0 0 var(--bar-line,transparent), inset 0 1px 0 var(--bar-line,transparent), inset 0 -1px 0 var(--bar-line,transparent), 0 1px 0 rgba(0,23,51,.06); }
+.calendar-event.starts.ends,.calendar-event.starts.ends.subscription,.calendar-event.starts.ends.listing,.calendar-event.starts.ends.refund { box-shadow:inset 0 0 0 1px var(--bar-line,transparent), 0 1px 0 rgba(0,23,51,.06); }
+.calendar-event.starts .calendar-event-label { padding-left:4px; }
