@@ -934,3 +934,11 @@ button:active:not(:disabled) { transform:translateY(1px); }
 .featured-signal > span:first-child { font-size:13px; font-weight:600; color:var(--accent-dark); }
 .featured-signal strong { font-size:20px; font-weight:700; letter-spacing:-.02em; color:var(--accent-dark); font-variant-numeric:tabular-nums; }
 .featured-signal-sub { margin-left:auto; font-size:13px; font-weight:600; color:var(--accent-dark); font-variant-numeric:tabular-nums; }
+
+/* Detail schedule rows share the section's left edge instead of a 16px inset. */
+.detail-facts-list { margin:0; }
+.detail-facts-list .tds-mobile-list-row,.detail-facts-list .tds-mobile-list-row > * { padding-left:0 !important; padding-right:0 !important; }
+/* List view: ended items of the month fold behind one quiet row. */
+.past-toggle { display:flex; align-items:center; justify-content:center; gap:2px; width:100%; min-height:48px; margin-top:4px; border-top:1px solid var(--border); font-size:14px; font-weight:500; color:var(--muted); }
+.past-toggle[aria-expanded=true] svg { transform:rotate(-90deg); }
+.past-toggle[aria-expanded=false] svg { transform:rotate(90deg); }

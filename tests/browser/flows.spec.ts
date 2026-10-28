@@ -535,3 +535,27 @@ test('홈 대표 청약 버튼은 다음 화면에서 볼 공시 정보를 이�
   await page.reload();
   await expect(page.locator('.featured-panel').getByRole('button', { name: '청약 결과 확인하기' })).toBeVisible();
 });
+
+test('목록 보기는 남은 일정을 먼저 보여주고 지난 일정은 접어 둬요', async ({ page }) => {
+  await setup(page); await page.clock.setFixedTime(new Date('2026-10-28T03:00:00Z'));
+  await page.goto('/#calendar'); await page.getByRole('button', { name: '목록', exact: true }).click();
+  const list = page.locator('.list-mode');
+  await expect(list.locator('.event-row')).toHaveCount(2); // 미래스팩1호 (through 10.28) and 한빛테크 환불 10.28 are still on
+  await expect(list).toContainText('미래스팩1호');
+  await expect(list.locator('.event-row').filter({ hasText: '종료' })).toHaveCount(0);
+  await list.getByRole('button', { name: '지난 일정 2개 보기' }).click();
+  await expect(list.locator('.event-row')).toHaveCount(4);
+  await list.getByRole('button', { name: '지난 일정 접기' }).click();
+  await expect(list.locator('.event-row')).toHaveCount(2);
+  await page.goto('/#saved');
+  await expect(page.locator('.saved-toolbar')).not.toContainText('0개 일정');
+});
+
+test('상세 일정 행은 일정 제목과 같은 왼쪽 선에서 시작해요', async ({ page }) => {
+  await setup(page); await page.goto('/#home/event/a');
+  const facts = page.getByRole('dialog').locator('.detail-facts');
+  await facts.locator('.detail-facts-list').waitFor();
+  const heading = (await facts.locator('h3').boundingBox())!.x;
+  const label = (await facts.getByText('청약일', { exact: true }).boundingBox())!.x;
+  expect(Math.abs(label - heading)).toBeLessThanOrEqual(1);
+});
