@@ -942,3 +942,9 @@ button:active:not(:disabled) { transform:translateY(1px); }
 .past-toggle { display:flex; align-items:center; justify-content:center; gap:2px; width:100%; min-height:48px; margin-top:4px; border-top:1px solid var(--border); font-size:14px; font-weight:500; color:var(--muted); }
 .past-toggle[aria-expanded=true] svg { transform:rotate(-90deg); }
 .past-toggle[aria-expanded=false] svg { transform:rotate(90deg); }
+
+/* Selected date: a soft brand tint instead of a solid black disc, so the bars stay the focus.
+   Today without selection keeps only a brand-coloured number. */
+.calendar-day.today .day-number { box-shadow:none; color:var(--accent-dark); font-weight:700; }
+.calendar-day.selected .day-number,.calendar-day.selected:hover .day-number { background:var(--accent-pale); color:var(--accent-dark); font-weight:700; box-shadow:none; }
+.calendar-day.selected:active .day-number { background:var(--accent-weak-press); color:var(--accent-dark); opacity:1; }
