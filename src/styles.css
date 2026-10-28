@@ -976,3 +976,23 @@ button:active:not(:disabled) { transform:translateY(1px); }
 .calendar-event.ends { box-shadow:inset -1px 0 0 var(--bar-line,transparent), inset 0 1px 0 var(--bar-line,transparent), inset 0 -1px 0 var(--bar-line,transparent), 0 1px 0 rgba(0,23,51,.06); }
 .calendar-event.starts.ends,.calendar-event.starts.ends.subscription,.calendar-event.starts.ends.listing,.calendar-event.starts.ends.refund { box-shadow:inset 0 0 0 1px var(--bar-line,transparent), 0 1px 0 rgba(0,23,51,.06); }
 .calendar-event.starts .calendar-event-label { padding-left:4px; }
+
+/* No pastel tints or gradient fades: neutral greys carry surfaces, the brand and kind colours
+   appear only as text, outlines, dots and the single primary button. */
+:root { --accent-pale:var(--raised); --listing-pale:var(--raised); --refund-pale:var(--raised); --accent-weak:#e5e8eb; --accent-weak-press:#d1d6db; }
+.calendar-event.subscription,.overview .calendar-event.subscription,.calendar.bars .calendar-event.subscription,
+.calendar-event.listing,.overview .calendar-event.listing,.calendar.bars .calendar-event.listing,
+.calendar-event.refund,.overview .calendar-event.refund,.calendar.bars .calendar-event.refund { background:var(--raised); }
+.calendar-event.subscription { color:#075c50; }
+.calendar-event.listing { color:#364f8d; }
+.calendar-event.refund { color:#6d521d; }
+.calendar-day.selected .day-number,.calendar-day.selected:hover .day-number { background:var(--active); color:var(--text); }
+.calendar-day.selected:active .day-number { background:#d1d6db; color:var(--text); }
+.app-action.weak { background:var(--accent-weak); color:#333d4b; }
+.app-action.weak:active:not(:disabled) { background:var(--accent-weak-press); }
+.kind-label.subscription,.kind-label.listing,.kind-label.refund { background:var(--raised); }
+.featured-signal { background:var(--raised); }
+.source-external { background:var(--raised); }
+.notice button { background:var(--raised); }
+.app-shell .detail-actions.bottom-cta { background:var(--surface); }
+.sheet.is-report .detail-actions.bottom-cta { background:var(--ground); }
