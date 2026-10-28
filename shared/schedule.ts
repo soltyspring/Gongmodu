@@ -74,6 +74,8 @@ export interface ScheduleResponse {
 export const kindLabels: Record<EventKind, string> = {
   subscription: '청약', listing: '상장', refund: '환불', other: '기타',
 };
+/** Display name of a broker without the legal-form marks: '삼성증권(주)' → '삼성증권'. Data keeps the original. */
+export const brokerLabel = (name: string) => name.replace(/\(\s*주\s*\)|㈜|주식회사/g, '').replace(/\s+/g, ' ').trim();
 export function isScheduleEvent(value: unknown): value is ScheduleEvent {
   if (!value || typeof value !== 'object') return false;
   const e = value as ScheduleEvent;

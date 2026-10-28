@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseSchedule } from './helpers/ics.ts';
-import { addDays, assignLanes, calendarCells, dateKey, exportCalendar, includesDate, lastDay, statusLabel } from '../shared/schedule.ts';
+import { addDays, assignLanes, brokerLabel, calendarCells, dateKey, exportCalendar, includesDate, lastDay, statusLabel } from '../shared/schedule.ts';
 
 const calendar = (events: string) => `BEGIN:VCALENDAR\r\nVERSION:2.0\r\n${events}\r\nEND:VCALENDAR\r\n`;
 const event = (id: string, start: string, end: string, title = '(청약) 테스트기업 - 삼성 (10\\,000원~12\\,000원)') => `BEGIN:VEVENT\r\nUID:${id}\r\nDTSTART;VALUE=DATE:${start}\r\nDTEND;VALUE=DATE:${end}\r\nSUMMARY:${title}\r\nEND:VEVENT`;
@@ -58,4 +58,8 @@ test('내보낸 ICS는 한글/개행/쉼표와 exclusive 종료일을 보존하�
 });
 test('잘못된 ICS 원문은 거부', () => {
   assert.throws(() => parseSchedule('<html>bad gateway</html>'));
+});
+
+test('증권사 표시 이름에서 (주)·㈜·주식회사를 빼요', () => {
+  for (const [raw, name] of [['삼성증권(주)', '삼성증권'], ['(주)아이엠증권', '아이엠증권'], ['㈜한화투자증권', '한화투자증권'], ['KB증권 주식회사', 'KB증권'], ['미래에셋증권 ( 주 )', '미래에셋증권'], ['NH투자증권', 'NH투자증권']]) assert.equal(brokerLabel(raw), name);
 });

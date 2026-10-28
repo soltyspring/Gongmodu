@@ -3,7 +3,7 @@ import FinancialChart from './FinancialChart';
 import { companyReport } from './company-report';
 import type { Fact } from './detail-facts';
 import { OfferingResults } from './OfferingResults';
-import { companyReferences, type ScheduleEvent } from '../shared/schedule';
+import { brokerLabel, companyReferences, type ScheduleEvent } from '../shared/schedule';
 
 /** A one-screen IPO brief: offer terms, headline numbers, derived facts, business, trend, sources. */
 export default function CompanyInfo({event, facts, price}:{event:ScheduleEvent; facts:Fact[]; price:string}) {
@@ -16,7 +16,7 @@ export default function CompanyInfo({event, facts, price}:{event:ScheduleEvent; 
     <header className="report-hero">
       <p className="report-eyebrow">기업 리포트 · 증권신고서 기준</p>
       <h2 className="report-title">{event.company}</h2>
-      {event.broker && <p className="report-broker">{event.broker} 주관</p>}
+      {event.broker && <p className="report-broker">{event.broker.split(/[,，]/).map(brokerLabel).filter(Boolean).join(', ')} 주관</p>}
       <dl className="report-offer">{offer.map(item=><div key={item.label}><dt>{item.label}</dt><dd className={item.known?'':'is-unknown'}>{item.value}</dd></div>)}</dl>
     </header>
 

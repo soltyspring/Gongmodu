@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type ComponentProps } from 'react';
 import { Bookmark, CalendarDays, Check, ChevronLeft, ChevronRight, CircleHelp, ExternalLink, Home, Info, Search, X } from 'lucide-react';
-import { assignLanes, calendarCells, changeMonth, dateKey, dateRange, dayDiff, includesDate, isScheduleEvent, isSubscriptionClosed, kindLabels, offeringResults, lastDay, shortDate, statusLabel, verifiedCloseTime, type EventKind, type ScheduleEvent, type ScheduleResponse } from '../shared/schedule';
+import { assignLanes, brokerLabel, calendarCells, changeMonth, dateKey, dateRange, dayDiff, includesDate, isScheduleEvent, isSubscriptionClosed, kindLabels, offeringResults, lastDay, shortDate, statusLabel, verifiedCloseTime, type EventKind, type ScheduleEvent, type ScheduleResponse } from '../shared/schedule';
 import { closeNative, connectNative, isNativeToss, openExternal, reportNeedsAd, showReportAd } from './platform';
 import { FactsFallback, type Fact } from './detail-facts';
 import { OfferingResults } from './OfferingResults';
@@ -68,7 +68,7 @@ function brokerTone(name: string) {
 }
 function BrokerBadges({ broker, fallback }: { broker: string | null | undefined; fallback: string }) {
   if (!broker?.trim()) return <span className="broker-fallback">{fallback}</span>;
-  return <span className="broker-badges">{broker.split(/[,，]/).map(name => name.trim()).filter(Boolean).map((name, index) => <span className={`broker-badge broker-${brokerTone(name)}`} key={`${name}-${index}`}>{name}</span>)}</span>;
+  return <span className="broker-badges">{broker.split(/[,，]/).map(name => brokerLabel(name)).filter(Boolean).map((name, index) => <span className={`broker-badge broker-${brokerTone(name)}`} key={`${name}-${index}`}>{name}</span>)}</span>;
 }
 function Mark({ small = false }: { small?: boolean }) {
   return <span className={`brand-mark ${small ? 'small' : ''}`} aria-hidden="true"><span /><span /><span /></span>;
